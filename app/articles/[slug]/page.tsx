@@ -1,4 +1,6 @@
 import React from "react";
+import ReactMarkdown from "react-markdown";
+import rehypeSanitize from "rehype-sanitize";
 
 type Props = { params: { slug: string } };
 
@@ -49,7 +51,9 @@ export default async function ArticleViewPage({ params }: Props) {
       <div style={{ color: "#666", marginBottom: 12 }}>
         By {article.author_fid} • {new Date(article.created_at).toLocaleString()}
       </div>
-      <div style={{ whiteSpace: "pre-wrap" }}>{article.body}</div>
+      <article>
+        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{String(article.body)}</ReactMarkdown>
+      </article>
     </div>
   );
 }
