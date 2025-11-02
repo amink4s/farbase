@@ -2,6 +2,7 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import EditProposalForm from "../../../components/EditProposalForm";
+import ApproveEditButton from "../../../components/ApproveEditButton";
 
 // Use a loose prop signature to satisfy Next.js PageProps constraints in the app router
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -94,6 +95,15 @@ export default async function ArticleViewPage(props: any) {
                   <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{String(e.body ?? "")}</ReactMarkdown>
                 </div>
                 <div style={{ marginTop: 8 }}><em>Approved: {e.approved ? "Yes" : "No"}</em></div>
+                {/* Approve button for article owner (client component) */}
+                {!e.approved && (
+                  // Client component; server components can render client components directly
+                  <div style={{ marginTop: 8 }}>
+                    {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+                    {/* @ts-ignore */}
+                    <ApproveEditButton slug={article.slug} editId={e.id} />
+                  </div>
+                )}
               </li>
             ))}
           </ul>
