@@ -39,3 +39,20 @@ Acceptance checklist for scaffold branch
 - Two API stubs added (src/pages/api/articles/index.ts and src/pages/api/articles/[slug].ts) using process.env guards.
 - GitHub Actions workflow file added (.github/workflows/deploy-vercel.yml).
 - All files committed on branch `scaffold/base-mini-kit` (PR will be opened after you confirm).
+
+## Roadmap & MVP Checklist
+
+Follow these developer tasks to deliver the MVP focused on tokens/projects pages:
+
+1. Add DB migrations for `article_edits`, `contributors`, and `airdrops` (see `ROADMAP.md`).
+2. Ensure environment variables are set locally or in CI: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEYNAR_API_KEY`, `NEXT_PUBLIC_ONCHAINKIT_API_KEY`.
+3. Run DB migrations / apply `schema.sql` and new migrations in Supabase.
+4. Implement server-side QuickAuth verification for write endpoints (use `app/api/auth/route.ts` as canonical example).
+5. Wire Neynar server-side scoring for new articles/edits and persist `neynar_score`.
+6. Implement `POST /api/articles` and `POST /api/articles/:slug/edits` with proper status codes and error handling.
+7. Add article view and create/edit pages in `app/` (client components where needed). Keep secrets server-side.
+8. Implement `article_edits` history UI and a contributors list per article.
+9. Provide an admin export endpoint to get eligible FIDs for airdrops (`/api/airdrop/eligibility`).
+10. Add basic tests for APIs and run `npm run build` to validate types.
+
+If you want, I can start by creating the migration SQL and scaffolding the `POST /api/articles` QuickAuth + Neynar integration. Tell me which task to pick first.
