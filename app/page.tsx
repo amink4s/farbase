@@ -1,9 +1,8 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Wallet } from "@coinbase/onchainkit/wallet";
+import Link from "next/link";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
-// import { useQuickAuth } from "@coinbase/onchainkit/minikit";
 import styles from "./page.module.css";
 
 export default function Home() {
@@ -24,11 +23,65 @@ export default function Home() {
     }
   }, [setMiniAppReady, isMiniAppReady]);
 
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resultsState, setResultsState] = useState<Array<{ slug: string; title: string }>>([]);
+
+  // Debounced search effect
+  useEffect(() => {
+    const controller = new AbortController();
+    if (!query || query.length < 2) {
+      setResultsState([]);
+      return () => controller.abort();
+    }
+
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/articles?search=${encodeURIComponent(query)}`, { signal: controller.signal });
+        if (!res.ok) {
+          setResultsState([]);
+          setLoading(false);
+          return;
+        }
+        const data = await res.json();
+        setResultsState(data.articles || []);
+      } catch (err: unknown) {
+        const name = typeof err === "object" && err !== null && "name" in err ? (err as { name?: unknown }).name : undefined;
+        if (name !== "AbortError") {
+          console.error("Search error", err);
+        }
+        setResultsState([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
+  }, [query]);
+
   return (
     <div className={styles.container}>
-      <header className={styles.headerWrapper}>
-        <Wallet />
-      </header>
+      <div className={styles.pageActions}>
+        <div className={styles.searchWrapper}>
+          <input
+            className={styles.searchInput}
+            placeholder="Search Farbase (tokens, projects, people...)"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Search Farbase"
+          />
+        </div>
+
+        <div>
+          <Link href="/articles/create" className={styles.createButton}>
+            + Publish
+          </Link>
+        </div>
+      </div>
 
       <div className={styles.content}>
         <Image
@@ -41,10 +94,32 @@ export default function Home() {
         <h1 className={styles.title}>MiniKit</h1>
 
         <p>
-          Get started by editing <code>app/page.tsx</code>
+          Search the Farbase wiki or publish a new token/project page using the
+          Publish button.
         </p>
 
-        <h2 className={styles.componentsTitle}>Explore Components</h2>
+        <div style={{ width: "100%", maxWidth: 800, marginTop: 20 }}>
+          {query ? (
+            <div>
+              <h3>{`Search results for "${query}"`}</h3>
+              {loading ? (
+                <p>Searching…</p>
+              ) : resultsState.length === 0 ? (
+                <p>No results yet &mdash; try a different query.</p>
+              ) : (
+                <ul>
+                  {resultsState.map((r) => (
+                    <li key={r.slug}>
+                      <Link href={`/articles/${r.slug}`}>{r.title}</Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+      ) : null}
+      </div>
+
+    <h2 className={styles.componentsTitle}>Explore Components</h2>
 
         <ul className={styles.components}>
           {[

@@ -25,9 +25,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .status(500)
       .json({ error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables" });
   }
+  // Support GET for search and POST for creation.
+  if (req.method === "GET") {
+    try {
+      const q = (req.query.search as string) || "";
+      // Minimal safety: if no query, return empty array (or you may return recent articles)
+      if (!q) {
+        return res.status(200).json({ articles: [] });
+      }
+
+      // Build Supabase REST filter: search in title, body, or slug (case-insensitive)
+      // Use the `or` parameter with ilike filters: or=(title.ilike.*q*,body.ilike.*q*,slug.ilike.*q*)
+      const encoded = encodeURIComponent(`(title.ilike.*${q}*,body.ilike.*${q}*,slug.ilike.*${q}*)`);
+      const url = `${SUPABASE_URL}/rest/v1/articles?select=slug,title,metadata,created_at&or=${encoded}&limit=50`;
+
+      const resp = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+        },
+      });
+
+      if (!resp.ok) {
+        const text = await resp.text();
+        return res.status(502).json({ error: "Supabase REST error", details: text });
+      }
+
+      const rows = await resp.json();
+      return res.status(200).json({ articles: rows });
+    } catch (err) {
+      console.error("API /api/articles GET error:", err);
+      return res.status(500).json({ error: "Internal server error" });
+    }
+  }
 
   if (req.method !== "POST") {
-    res.setHeader("Allow", "POST");
+    res.setHeader("Allow", "GET, POST");
     return res.status(405).json({ error: "Method not allowed" });
   }
 
