@@ -70,8 +70,8 @@ export default function EditProposalForm({ slug, onSuccess }: { slug: string; on
         </label>
       </div>
 
-      {error && <div style={{ color: "#b00020", marginBottom: 8 }>Error: {error}</div>}
-      {success && <div style={{ color: "#007700", marginBottom: 8 }>{success}</div>}
+  {error && <div style={{ color: "#b00020", marginBottom: 8 }}>{`Error: ${error}`}</div>}
+  {success && <div style={{ color: "#007700", marginBottom: 8 }}>{success}</div>}
 
       <div>
         <button type="submit" disabled={loading}>{loading ? "Submitting…" : "Submit Proposal"}</button>
