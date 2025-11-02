@@ -2,10 +2,10 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 
-type Props = { params: { slug: string } };
-
-export default async function ArticleViewPage({ params }: Props) {
-  const slug = params?.slug ?? "";
+// Use a loose prop signature to satisfy Next.js PageProps constraints in the app router
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export default async function ArticleViewPage(props: any) {
+  const slug = props?.params?.slug ?? "";
 
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
