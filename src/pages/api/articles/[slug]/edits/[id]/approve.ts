@@ -56,7 +56,42 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(403).json({ error: "Only the article owner can approve edits" });
     }
 
-    // Update the edit row to set approved = true
+    // Fetch the edit row so we can apply it to the article
+    const editResp = await fetch(`${SUPABASE_URL}/rest/v1/article_edits?id=eq.${encodeURIComponent(String(id))}&limit=1`, {
+      headers: { Authorization: `Bearer ${String(SUPABASE_KEY)}`, apikey: String(SUPABASE_KEY) } as Record<string, string>,
+    });
+    if (!editResp.ok) {
+      const text = await editResp.text();
+      return res.status(502).json({ error: "Supabase REST error fetching edit", details: text });
+    }
+    const editRows = await editResp.json();
+    const edit = Array.isArray(editRows) ? editRows[0] : editRows;
+    if (!edit) return res.status(404).json({ error: "Edit not found" });
+
+    // Apply the edit to the article: update the article's body (and title if provided)
+    const articleUpdatePayload: Record<string, unknown> = {};
+    if (edit.body) articleUpdatePayload.body = edit.body;
+    if (edit.title) articleUpdatePayload.title = edit.title;
+
+    if (Object.keys(articleUpdatePayload).length > 0) {
+      const applyResp = await fetch(`${SUPABASE_URL}/rest/v1/articles?id=eq.${encodeURIComponent(String(article.id))}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+          Authorization: `Bearer ${String(SUPABASE_KEY)}`,
+          apikey: String(SUPABASE_KEY),
+        } as Record<string, string>,
+        body: JSON.stringify(articleUpdatePayload),
+      });
+
+      if (!applyResp.ok) {
+        const text = await applyResp.text();
+        return res.status(502).json({ error: "Supabase REST error applying edit to article", details: text });
+      }
+    }
+
+    // Finally mark the edit as approved
     const updateResp = await fetch(`${SUPABASE_URL}/rest/v1/article_edits?id=eq.${encodeURIComponent(String(id))}`, {
       method: "PATCH",
       headers: {
@@ -64,17 +99,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         Prefer: "return=representation",
         Authorization: `Bearer ${String(SUPABASE_KEY)}`,
         apikey: String(SUPABASE_KEY),
-      },
+      } as Record<string, string>,
       body: JSON.stringify({ approved: true }),
     });
 
     if (!updateResp.ok) {
       const text = await updateResp.text();
-      return res.status(502).json({ error: "Supabase REST error", details: text });
+      return res.status(502).json({ error: "Supabase REST error updating edit", details: text });
     }
 
     const updated = await updateResp.json();
-    return res.status(200).json({ updated: Array.isArray(updated) ? updated[0] : updated });
+    return res.status(200).json({ applied: true, updated: Array.isArray(updated) ? updated[0] : updated });
   } catch (err) {
     console.error("API approve edit error:", err);
     return res.status(500).json({ error: "Internal server error" });
