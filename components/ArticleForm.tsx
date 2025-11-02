@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import sdk from "@farcaster/miniapp-sdk";
 
 export default function ArticleForm({ onSuccess }: { onSuccess?: () => void }) {
   const [slug, setSlug] = useState("");
@@ -13,16 +14,27 @@ export default function ArticleForm({ onSuccess }: { onSuccess?: () => void }) {
     setLoading(true);
     setError(null);
 
-    // NOTE: For authenticated flows, include QuickAuth token in the Authorization header.
-    // Example: headers: { Authorization: `Bearer ${token}` }
-    const payload = { slug, title, body, author_fid: "" };
+    // Server will verify QuickAuth JWT and set `author_fid` from the token's `sub`.
+    const payload = { slug, title, body };
 
     try {
-      const res = await fetch("/api/articles", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      let res: Response;
+
+      // If running inside a mini app, use the miniapp SDK quickAuth.fetch so the
+      // Authorization header is attached by the host. Otherwise fall back to normal fetch.
+      if (sdk && sdk.quickAuth && typeof sdk.quickAuth.fetch === "function") {
+        res = await sdk.quickAuth.fetch("/api/articles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        res = await fetch("/api/articles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
 
       if (!res.ok) {
         const text = await res.text();
@@ -36,8 +48,8 @@ export default function ArticleForm({ onSuccess }: { onSuccess?: () => void }) {
       setBody("");
       onSuccess?.();
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : String(err);
-        setError(message);
+      const message = err instanceof Error ? err.message : String(err);
+      setError(message);
       setLoading(false);
     }
   }
