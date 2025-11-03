@@ -10,7 +10,7 @@ function getBaseUrl() {
 export async function GET() {
   const base = getBaseUrl();
 
-  const cfgFrame = (minikitConfig as any)?.frame ?? {};
+  const cfgFrame = (minikitConfig as unknown as { frame?: Record<string, unknown> })?.frame ?? {};
   const frame = {
     name: cfgFrame.name ?? process.env.NEXT_PUBLIC_MINIAPP_NAME ?? "Farpedia",
     version: cfgFrame.version ?? process.env.NEXT_PUBLIC_MINIAPP_VERSION ?? "1",
