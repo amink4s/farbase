@@ -1,4 +1,4 @@
--- Supabase-ready Postgres schema for Farbase (Farpedia) mini app
+-- Supabase-ready Postgres schema for farpedia (Farpedia) mini app
 -- Run in Supabase SQL editor or psql. Do NOT store secrets here.
 
 -- Articles table

@@ -1,10 +1,10 @@
-# Farbase (Farpedia) Roadmap
+# farpedia (Farpedia) Roadmap
 
 This document describes the product vision, data model suggestions, milestones for the MVP, and an actionable checklist developers can follow to implement the wiki + rewards system.
 
 ## Vision
 
-Farbase will be a Wikipedia-style knowledge base for the Farcaster/Base ecosystem. Every token, project, channel, and person can have a dedicated page. Contributions are tracked and, later, rewarded via an on-chain token airdrop to verified contributors.
+farpedia will be a Wikipedia-style knowledge base for the Farcaster/Base ecosystem. Every token, project, channel, and person can have a dedicated page. Contributions are tracked and, later, rewarded via an on-chain token airdrop to verified contributors.
 
 Principles
 - Open-edit model (like Wikipedia) but with moderation and owner controls.

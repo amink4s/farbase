@@ -1,6 +1,6 @@
-# Farbase (Farpedia) — Base / Farcaster mini app (scaffold)
+# farpedia (Farpedia) — Base / Farcaster mini app (scaffold)
 
-Minimal scaffold for the Farbase mini app using the Base Mini Kit (Next.js app dir) and Supabase.
+Minimal scaffold for the farpedia mini app using the Base Mini Kit (Next.js app dir) and Supabase.
 
 What this branch adds
 - Initial project scaffold and API stubs (to be created on branch `scaffold/base-mini-kit`).

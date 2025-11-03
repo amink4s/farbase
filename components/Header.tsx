@@ -17,7 +17,7 @@ export default function Header() {
   return (
     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 16px" }}>
       <div>
-        <strong>Farbase</strong>
+        <strong>farpedia</strong>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

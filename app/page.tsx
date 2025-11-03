@@ -69,10 +69,10 @@ export default function Home() {
         <div className={styles.searchWrapper}>
           <input
             className={styles.searchInput}
-            placeholder="Search Farbase (tokens, projects, people...)"
+            placeholder="Search farpedia (tokens, projects, people...)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search Farbase"
+            aria-label="Search farpedia"
           />
         </div>
 
@@ -94,7 +94,7 @@ export default function Home() {
         <h1 className={styles.title}>MiniKit</h1>
 
         <p>
-          Search the Farbase wiki or publish a new token/project page using the
+          Search the farpedia wiki or publish a new token/project page using the
           Publish button.
         </p>
 

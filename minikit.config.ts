@@ -19,7 +19,7 @@ export const minikitConfig = {
   },
   miniapp: {
     version: "1",
-    name: "farbase",
+    name: "farpedia",
     subtitle: "",
     description: "",
     screenshotUrls: [],
