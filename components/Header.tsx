@@ -48,7 +48,67 @@ export default function Header() {
 
   const avatarUrl = extractAvatar(user);
 
-  const [showDebug, setShowDebug] = React.useState(false);
+  // If host doesn't provide an avatar, generate a deterministic identicon based on the user's FID.
+  function hashStringToInt(s: string) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < s.length; i++) {
+      h ^= s.charCodeAt(i);
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    return h >>> 0;
+  }
+
+  function seededRandom(seed: number) {
+    let state = seed >>> 0;
+    return function () {
+      // xorshift32
+      state ^= state << 13;
+      state ^= state >>> 17;
+      state ^= state << 5;
+      state = state >>> 0;
+      return state / 0xffffffff;
+    };
+  }
+
+  function generateIdenticonDataUrl(seedInput: string | number | undefined, size = 64) {
+    const seedStr = seedInput == null ? "anon" : String(seedInput);
+    const seed = hashStringToInt(seedStr);
+    const rand = seededRandom(seed);
+
+    // pick a color
+    const r = Math.floor(rand() * 200) + 30;
+    const g = Math.floor(rand() * 200) + 30;
+    const b = Math.floor(rand() * 200) + 30;
+    const fill = `rgb(${r},${g},${b})`;
+    const bg = "#ffffff";
+
+    const grid = 5;
+    const cell = Math.floor(size / grid);
+    const halves = Math.ceil(grid / 2);
+
+    let svg = `<?xml version='1.0' encoding='UTF-8'?>`;
+    svg += `<svg xmlns='http://www.w3.org/2000/svg' width='${size}' height='${size}' viewBox='0 0 ${size} ${size}'>`;
+    svg += `<rect width='100%' height='100%' fill='${bg}'/>`;
+
+    for (let y = 0; y < grid; y++) {
+      for (let x = 0; x < halves; x++) {
+        const v = rand() > 0.5;
+        if (!v) continue;
+        const xx = x * cell;
+        const yy = y * cell;
+        // left cell
+        svg += `<rect x='${xx}' y='${yy}' width='${cell}' height='${cell}' fill='${fill}'/>`;
+        // mirror to right
+        const mx = (grid - 1 - x) * cell;
+        if (mx !== xx) svg += `<rect x='${mx}' y='${yy}' width='${cell}' height='${cell}' fill='${fill}'/>`;
+      }
+    }
+
+    svg += `</svg>`;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+  }
+
+  
 
   return (
     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 16px" }}>
@@ -63,7 +123,22 @@ export default function Header() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={avatarUrl} alt="avatar" style={{ width: 32, height: 32, borderRadius: 999 }} />
             ) : (
-              <div style={{ width: 32, height: 32, borderRadius: 999, background: "#ddd" }} />
+              // identicon fallback based on fid or displayName
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={generateIdenticonDataUrl(
+                  (typeof user?.["fid"] === "string" || typeof user?.["fid"] === "number")
+                    ? (user?.["fid"] as string | number)
+                    : (typeof user?.["username"] === "string"
+                        ? (user?.["username"] as string)
+                        : typeof user?.["displayName"] === "string"
+                        ? (user?.["displayName"] as string)
+                        : undefined),
+                  32
+                )}
+                alt="identicon"
+                style={{ width: 32, height: 32, borderRadius: 999 }}
+              />
             )}
             <div style={{ fontSize: 14 }}>{displayName}</div>
           </div>
@@ -72,16 +147,7 @@ export default function Header() {
           <Wallet />
         )}
       </div>
-      {user && (
-        <div style={{ padding: 8 }}>
-          <button onClick={() => setShowDebug((s) => !s)} style={{ fontSize: 12 }}>
-            {showDebug ? "Hide profile JSON" : "Show profile JSON"}
-          </button>
-          {showDebug ? (
-            <pre style={{ maxWidth: 480, overflowX: "auto", fontSize: 12 }}>{JSON.stringify(user, null, 2)}</pre>
-          ) : null}
-        </div>
-      )}
+      
     </header>
   );
 }
