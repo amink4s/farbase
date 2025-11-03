@@ -3,6 +3,8 @@ import { Errors, createClient } from "@farcaster/quick-auth";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const NEYNAR_KEY = process.env.NEYNAR_API_KEY;
+const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.ai/v1/score";
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   // Note: this guard runs at import time so developers see a clear error during startup.
@@ -100,7 +102,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: "QuickAuth token missing sub (fid)" });
     }
 
-    // TODO: Neynar moderation check — call Neynar API with `content` and set `neynar_score` from response.
+    // Run Neynar moderation / scoring server-side before inserting.
+    let neynar_score: number | null = null;
+    if (!NEYNAR_KEY) {
+      // If the Neynar key is not configured, fail fast: publishing is restricted until moderation is enabled.
+      return res.status(503).json({ error: "Neynar moderation unavailable: missing NEYNAR_API_KEY" });
+    }
+
+    try {
+      const nr = await fetch(NEYNAR_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${NEYNAR_KEY}`,
+        },
+        body: JSON.stringify({ title, text: content }),
+      });
+
+      if (!nr.ok) {
+        const text = await nr.text();
+        console.warn("Neynar service returned non-OK status", nr.status, text);
+        // Treat as service error
+        return res.status(502).json({ error: "Neynar service error", details: text });
+      }
+
+      const nrJson = await nr.json();
+      // Try a few common shapes for returned score
+      const maybeScore =
+        typeof nrJson === "object" && nrJson !== null
+          ? (nrJson.score ?? nrJson.neynar_score ?? nrJson.data?.score ?? nrJson.result?.score)
+          : undefined;
+
+      neynar_score = typeof maybeScore === "number" ? maybeScore : parseFloat(String(maybeScore ?? "NaN"));
+      if (!Number.isFinite(neynar_score)) neynar_score = 0;
+    } catch (err) {
+      console.error("Error calling Neynar:", err);
+      return res.status(502).json({ error: "Neynar call failed" });
+    }
+
+    // Enforce quality gate: require Neynar score > 0.7 to allow publishing.
+    if (neynar_score <= 0.7) {
+      return res.status(403).json({ error: "Neynar score too low", neynar_score });
+    }
 
     const insertPayload = {
       slug,
@@ -108,7 +151,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       body: content,
       author_fid: authorFid,
       metadata: metadata || {},
-      published: false,
+      published: true,
+      neynar_score,
     };
 
     const resp = await fetch(`${SUPABASE_URL}/rest/v1/articles`, {
