@@ -72,6 +72,7 @@ export async function GET() {
         "4kyIU8gLozkwkRaKZMoPg0siwFqXB8uIYUqdyvg6be1r0WxPKNsJtgXyrKTMDf/fUdyvv1P1aUFssI8Pp5xWzRs=",
     },
     frame,
+    debug,
   };
 
   return Response.json(body);
