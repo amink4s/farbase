@@ -10,24 +10,58 @@ function getBaseUrl() {
 export async function GET() {
   const base = getBaseUrl();
 
-  const cfgFrame = (minikitConfig as unknown as { frame?: Record<string, unknown> })?.frame ?? {};
-  const frame = {
-    name: cfgFrame.name ?? process.env.NEXT_PUBLIC_MINIAPP_NAME ?? "Farpedia",
-    version: cfgFrame.version ?? process.env.NEXT_PUBLIC_MINIAPP_VERSION ?? "1",
-    iconUrl: cfgFrame.iconUrl ?? process.env.NEXT_PUBLIC_ICON_URL ?? `${base}/icon.png`,
-    homeUrl: cfgFrame.homeUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? process.env.NEXT_PUBLIC_URL ?? base,
-    primaryCategory: cfgFrame.primaryCategory ?? process.env.NEXT_PUBLIC_PRIMARY_CATEGORY ?? "utility",
-    description: cfgFrame.description ?? process.env.NEXT_PUBLIC_DESCRIPTION ?? "Farcaster/base wiki",
-    subtitle: cfgFrame.subtitle ?? process.env.NEXT_PUBLIC_SUBTITLE ?? "Farcaster/base wiki",
-    heroImageUrl: cfgFrame.heroImageUrl ?? process.env.NEXT_PUBLIC_HERO_URL ?? `${base}/hero.png`,
-    splashImageUrl: cfgFrame.splashImageUrl ?? process.env.NEXT_PUBLIC_SPLASH_URL ?? `${base}/splash.png`,
-    splashBackgroundColor: cfgFrame.splashBackgroundColor ?? process.env.NEXT_PUBLIC_SPLASH_BG ?? "#000000",
-    tagline: cfgFrame.tagline ?? process.env.NEXT_PUBLIC_TAGLINE ?? "farcaster and base app wiki",
-    buttonTitle: cfgFrame.buttonTitle ?? process.env.NEXT_PUBLIC_BUTTON_TITLE ?? "Farpedia",
-    ogTitle: cfgFrame.ogTitle ?? process.env.NEXT_PUBLIC_OG_TITLE ?? "Farpadia - farcaster base wiki",
-    ogDescription: cfgFrame.ogDescription ?? process.env.NEXT_PUBLIC_OG_DESCRIPTION ?? "farcaster and base app wiki",
-    ogImageUrl: cfgFrame.ogImageUrl ?? process.env.NEXT_PUBLIC_OG_IMAGE ?? `${base}/hero.png`,
-  };
+    const cfgFrame = (minikitConfig as unknown as { frame?: Record<string, unknown> })?.frame ?? {};
+
+    // safe defaults for the manifest frame
+    const defaultFrame: Record<string, string> = {
+      name: "Farpedia",
+      version: "1",
+      iconUrl: `${base}/icon.png`,
+      homeUrl: base,
+      primaryCategory: "utility",
+      description: "Farcaster/base wiki",
+      subtitle: "Farpaster/base wiki",
+      heroImageUrl: `${base}/hero.png`,
+      splashImageUrl: `${base}/splash.png`,
+      splashBackgroundColor: "#000000",
+      tagline: "farcaster and base app wiki",
+      buttonTitle: "Farpedia",
+      ogTitle: "Farpadia - farcaster base wiki",
+      ogDescription: "farcaster and base app wiki",
+      ogImageUrl: `${base}/hero.png`,
+    };
+
+    // env overrides (prefixed with NEXT_PUBLIC_)
+    const envFrame: Record<string, string | undefined> = {
+      name: process.env.NEXT_PUBLIC_MINIAPP_NAME,
+      version: process.env.NEXT_PUBLIC_MINIAPP_VERSION,
+      iconUrl: process.env.NEXT_PUBLIC_ICON_URL,
+      homeUrl: process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_URL,
+      primaryCategory: process.env.NEXT_PUBLIC_PRIMARY_CATEGORY,
+      description: process.env.NEXT_PUBLIC_DESCRIPTION,
+      subtitle: process.env.NEXT_PUBLIC_SUBTITLE,
+      heroImageUrl: process.env.NEXT_PUBLIC_HERO_URL,
+      splashImageUrl: process.env.NEXT_PUBLIC_SPLASH_URL,
+      splashBackgroundColor: process.env.NEXT_PUBLIC_SPLASH_BG,
+      tagline: process.env.NEXT_PUBLIC_TAGLINE,
+      buttonTitle: process.env.NEXT_PUBLIC_BUTTON_TITLE,
+      ogTitle: process.env.NEXT_PUBLIC_OG_TITLE,
+      ogDescription: process.env.NEXT_PUBLIC_OG_DESCRIPTION,
+      ogImageUrl: process.env.NEXT_PUBLIC_OG_IMAGE,
+    };
+
+    // Compose final frame: prefer config (minikitConfig.frame) -> env overrides -> defaults
+    const frame: Record<string, string> = {
+      ...defaultFrame,
+      ...Object.fromEntries(Object.entries(envFrame).filter(([, v]) => v !== undefined)) as Record<string, string>,
+      ...Object.fromEntries(Object.entries(cfgFrame).filter(([, v]) => typeof v === "string")) as Record<string, string>,
+    };
+
+    // add a tiny debug object to help verify deployed output
+    const debug = {
+      generatedAt: new Date().toISOString(),
+      source: Object.keys(cfgFrame).length > 0 ? "minikitConfig.frame" : "defaults/env",
+    };
 
   const body = {
     accountAssociation: {
