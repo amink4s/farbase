@@ -1,9 +1,8 @@
 "use client";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Wallet } from "@coinbase/onchainkit/wallet";
+import Link from "next/link";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
-// import { useQuickAuth } from "@coinbase/onchainkit/minikit";
 import styles from "./page.module.css";
 
 export default function Home() {
@@ -24,58 +23,90 @@ export default function Home() {
     }
   }, [setMiniAppReady, isMiniAppReady]);
 
+  const [query, setQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [resultsState, setResultsState] = useState<Array<{ slug: string; title: string }>>([]);
+
+  // Debounced search effect
+  useEffect(() => {
+    const controller = new AbortController();
+    if (!query || query.length < 2) {
+      setResultsState([]);
+      return () => controller.abort();
+    }
+
+    setLoading(true);
+    const t = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/articles?search=${encodeURIComponent(query)}`, { signal: controller.signal });
+        if (!res.ok) {
+          setResultsState([]);
+          setLoading(false);
+          return;
+        }
+        const data = await res.json();
+        setResultsState(data.articles || []);
+      } catch (err: unknown) {
+        const name = typeof err === "object" && err !== null && "name" in err ? (err as { name?: unknown }).name : undefined;
+        if (name !== "AbortError") {
+          console.error("Search error", err);
+        }
+        setResultsState([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      clearTimeout(t);
+      controller.abort();
+    };
+  }, [query]);
+
   return (
     <div className={styles.container}>
-      <header className={styles.headerWrapper}>
-        <Wallet />
-      </header>
+      <div style={{ padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <Image src="/hero.png" alt="Farpedia" className={styles.heroImage} width={320} height={120} priority />
 
-      <div className={styles.content}>
-        <Image
-          priority
-          src="/sphere.svg"
-          alt="Sphere"
-          width={200}
-          height={200}
-        />
-        <h1 className={styles.title}>MiniKit</h1>
+        <div className={styles.pageActions} style={{ width: "100%", maxWidth: 760 }}>
+          <div className={styles.searchWrapper}>
+            <input
+              className={styles.searchInput}
+              placeholder="Search Farpedia — tokens, projects, people..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search farpedia"
+              style={{ fontSize: "1.05rem", padding: "0.75rem 1rem" }}
+            />
+          </div>
 
-        <p>
-          Get started by editing <code>app/page.tsx</code>
-        </p>
+          <div>
+            <Link href="/articles/create" className={styles.createButton}>
+              + Create
+            </Link>
+          </div>
+        </div>
 
-        <h2 className={styles.componentsTitle}>Explore Components</h2>
-
-        <ul className={styles.components}>
-          {[
-            {
-              name: "Transaction",
-              url: "https://docs.base.org/onchainkit/transaction/transaction",
-            },
-            {
-              name: "Swap",
-              url: "https://docs.base.org/onchainkit/swap/swap",
-            },
-            {
-              name: "Checkout",
-              url: "https://docs.base.org/onchainkit/checkout/checkout",
-            },
-            {
-              name: "Wallet",
-              url: "https://docs.base.org/onchainkit/wallet/wallet",
-            },
-            {
-              name: "Identity",
-              url: "https://docs.base.org/onchainkit/identity/identity",
-            },
-          ].map((component) => (
-            <li key={component.name}>
-              <a target="_blank" rel="noreferrer" href={component.url}>
-                {component.name}
-              </a>
-            </li>
-          ))}
-        </ul>
+        <div style={{ width: "100%", maxWidth: 760, marginTop: 18 }}>
+          {query ? (
+            <div>
+              <h3>{`Search results for "${query}"`}</h3>
+              {loading ? (
+                <p>Searching…</p>
+              ) : resultsState.length === 0 ? (
+                <p>No results yet — try a different query.</p>
+              ) : (
+                <ul>
+                  {resultsState.map((r) => (
+                    <li key={r.slug}>
+                      <Link href={`/articles/${r.slug}`}>{r.title}</Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   );

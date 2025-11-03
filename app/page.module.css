@@ -37,3 +37,39 @@
 .components a:hover {
   text-decoration: underline;
 }
+
+.pageActions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  gap: 12px;
+}
+
+.searchWrapper {
+  flex: 1 1 auto;
+  max-width: 640px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.heroImage {
+  width: 320px;
+  height: auto;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(2,6,23,0.12);
+}
+.createButton {
+  display: inline-block;
+  padding: 0.5rem 0.9rem;
+  background: #111827;
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+}
