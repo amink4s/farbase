@@ -59,11 +59,21 @@
 }
 
 .heroImage {
-  width: 320px;
+  width: min(280px, 60vw);
+  max-width: 320px;
   height: auto;
-  margin-bottom: 20px;
-  border-radius: 12px;
-  box-shadow: 0 6px 24px rgba(2,6,23,0.12);
+  margin-bottom: 12px;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(2,6,23,0.08);
+}
+
+@media (max-width: 420px) {
+  .heroImage {
+    width: min(220px, 72vw);
+    margin-bottom: 10px;
+    border-radius: 8px;
+    box-shadow: none;
+  }
 }
 .createButton {
   display: inline-block;
