@@ -58,6 +58,13 @@
   border: 1px solid #ddd;
 }
 
+.heroImage {
+  width: 320px;
+  height: auto;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(2,6,23,0.12);
+}
 .createButton {
   display: inline-block;
   padding: 0.5rem 0.9rem;

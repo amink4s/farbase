@@ -65,47 +65,36 @@ export default function Home() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.pageActions}>
-        <div className={styles.searchWrapper}>
-          <input
-            className={styles.searchInput}
-            placeholder="Search farpedia (tokens, projects, people...)"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Search farpedia"
-          />
+      <div style={{ padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
+        <Image src="/hero.png" alt="Farpedia" className={styles.heroImage} width={320} height={120} priority />
+
+        <div className={styles.pageActions} style={{ width: "100%", maxWidth: 760 }}>
+          <div className={styles.searchWrapper}>
+            <input
+              className={styles.searchInput}
+              placeholder="Search Farpedia — tokens, projects, people..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Search farpedia"
+              style={{ fontSize: "1.05rem", padding: "0.75rem 1rem" }}
+            />
+          </div>
+
+          <div>
+            <Link href="/articles/create" className={styles.createButton}>
+              + Create
+            </Link>
+          </div>
         </div>
 
-        <div>
-          <Link href="/articles/create" className={styles.createButton}>
-            + Publish
-          </Link>
-        </div>
-      </div>
-
-      <div className={styles.content}>
-        <Image
-          priority
-          src="/sphere.svg"
-          alt="Sphere"
-          width={200}
-          height={200}
-        />
-        <h1 className={styles.title}>MiniKit</h1>
-
-        <p>
-          Search the farpedia wiki or publish a new token/project page using the
-          Publish button.
-        </p>
-
-        <div style={{ width: "100%", maxWidth: 800, marginTop: 20 }}>
+        <div style={{ width: "100%", maxWidth: 760, marginTop: 18 }}>
           {query ? (
             <div>
               <h3>{`Search results for "${query}"`}</h3>
               {loading ? (
                 <p>Searching…</p>
               ) : resultsState.length === 0 ? (
-                <p>No results yet &mdash; try a different query.</p>
+                <p>No results yet — try a different query.</p>
               ) : (
                 <ul>
                   {resultsState.map((r) => (
@@ -116,41 +105,8 @@ export default function Home() {
                 </ul>
               )}
             </div>
-      ) : null}
-      </div>
-
-    <h2 className={styles.componentsTitle}>Explore Components</h2>
-
-        <ul className={styles.components}>
-          {[
-            {
-              name: "Transaction",
-              url: "https://docs.base.org/onchainkit/transaction/transaction",
-            },
-            {
-              name: "Swap",
-              url: "https://docs.base.org/onchainkit/swap/swap",
-            },
-            {
-              name: "Checkout",
-              url: "https://docs.base.org/onchainkit/checkout/checkout",
-            },
-            {
-              name: "Wallet",
-              url: "https://docs.base.org/onchainkit/wallet/wallet",
-            },
-            {
-              name: "Identity",
-              url: "https://docs.base.org/onchainkit/identity/identity",
-            },
-          ].map((component) => (
-            <li key={component.name}>
-              <a target="_blank" rel="noreferrer" href={component.url}>
-                {component.name}
-              </a>
-            </li>
-          ))}
-        </ul>
+          ) : null}
+        </div>
       </div>
     </div>
   );
