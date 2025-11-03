@@ -11,8 +11,23 @@ export default function Header() {
   const maybeDisplay = user && (user.displayName || user.name || user.handle || user.username || user.fid);
   const displayName = typeof maybeDisplay === "string" ? maybeDisplay : maybeDisplay ? String(maybeDisplay) : undefined;
 
-  const maybeAvatar = user && (user.avatar || user.pfp || user.profileImageUrl || user.image || user.picture);
+  // Accept several common shapes; also check nested `profile` object which some hosts use.
+  // try several common top-level keys, then fall back to a nested `profile` object
+  let maybeAvatar: unknown = undefined;
+  if (user) {
+    const profile = (user["profile"] as unknown) as Record<string, unknown> | undefined;
+    maybeAvatar = (
+      (user["avatar"] as unknown) ||
+      (user["pfp"] as unknown) ||
+      (user["profileImageUrl"] as unknown) ||
+      (user["image"] as unknown) ||
+      (user["picture"] as unknown) ||
+      (profile && ((profile["avatar"] as unknown) || (profile["image"] as unknown) || (profile["picture"] as unknown)))
+    );
+  }
   const avatarUrl = typeof maybeAvatar === "string" ? maybeAvatar : undefined;
+
+  const [showDebug, setShowDebug] = React.useState(false);
 
   return (
     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 16px" }}>
@@ -21,7 +36,7 @@ export default function Header() {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {user ? (
+          {user ? (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -36,6 +51,16 @@ export default function Header() {
           <Wallet />
         )}
       </div>
+      {user && (
+        <div style={{ padding: 8 }}>
+          <button onClick={() => setShowDebug((s) => !s)} style={{ fontSize: 12 }}>
+            {showDebug ? "Hide profile JSON" : "Show profile JSON"}
+          </button>
+          {showDebug ? (
+            <pre style={{ maxWidth: 480, overflowX: "auto", fontSize: 12 }}>{JSON.stringify(user, null, 2)}</pre>
+          ) : null}
+        </div>
+      )}
     </header>
   );
 }
