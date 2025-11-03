@@ -12,20 +12,41 @@ export default function Header() {
   const displayName = typeof maybeDisplay === "string" ? maybeDisplay : maybeDisplay ? String(maybeDisplay) : undefined;
 
   // Accept several common shapes; also check nested `profile` object which some hosts use.
-  // try several common top-level keys, then fall back to a nested `profile` object
-  let maybeAvatar: unknown = undefined;
-  if (user) {
-    const profile = (user["profile"] as unknown) as Record<string, unknown> | undefined;
-    maybeAvatar = (
-      (user["avatar"] as unknown) ||
-      (user["pfp"] as unknown) ||
-      (user["profileImageUrl"] as unknown) ||
-      (user["image"] as unknown) ||
-      (user["picture"] as unknown) ||
-      (profile && ((profile["avatar"] as unknown) || (profile["image"] as unknown) || (profile["picture"] as unknown)))
-    );
+  // Helper to extract avatar from common fields (prefer pfpUrl)
+  function extractAvatar(u?: Record<string, unknown>): string | undefined {
+    if (!u) return undefined;
+    const keys = [
+      "pfpUrl",
+      "pfp_url",
+      "pfp",
+      "avatar",
+      "profileImageUrl",
+      "profile_image_url",
+      "image",
+      "picture",
+      "imageUrl",
+      "image_url",
+    ];
+
+    for (const k of keys) {
+      const v = u[k] as unknown;
+      if (typeof v === "string" && v.trim()) return v;
+    }
+
+    // try nested profile object
+    const profile = u["profile"] as unknown;
+    if (typeof profile === "object" && profile !== null) {
+      const p = profile as Record<string, unknown>;
+      for (const k of keys) {
+        const v = p[k] as unknown;
+        if (typeof v === "string" && v.trim()) return v;
+      }
+    }
+
+    return undefined;
   }
-  const avatarUrl = typeof maybeAvatar === "string" ? maybeAvatar : undefined;
+
+  const avatarUrl = extractAvatar(user);
 
   const [showDebug, setShowDebug] = React.useState(false);
 
