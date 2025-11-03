@@ -66,7 +66,7 @@ export default function Home() {
   return (
     <div className={styles.container}>
       <div style={{ padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
-        <Image src="/hero.png" alt="Farpedia" className={styles.heroImage} width={320} height={120} priority />
+        <Image src="/logo2.png" alt="Farpedia" className={styles.heroImage} width={320} height={120} priority />
 
         <div className={styles.pageActions} style={{ width: "100%", maxWidth: 760 }}>
           <div className={styles.searchWrapper}>
