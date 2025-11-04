@@ -10,10 +10,8 @@ export default function AdminAirdrop() {
     setError(null);
     try {
       // prefer quickAuth.fetch if available in the host environment
-      // @ts-ignore
-      const fetcher = (typeof (globalThis as any).quickAuth?.fetch === 'function')
-        ? (globalThis as any).quickAuth.fetch
-        : fetch;
+      const maybeGlobal = globalThis as unknown as { quickAuth?: { fetch?: (input: RequestInfo, init?: RequestInit) => Promise<Response> } };
+      const fetcher = typeof maybeGlobal.quickAuth?.fetch === 'function' ? maybeGlobal.quickAuth.fetch.bind(maybeGlobal.quickAuth) : fetch;
 
       const resp = await fetcher('/api/admin/airdrop?top=500');
       if (!resp.ok) {
@@ -30,8 +28,9 @@ export default function AdminAirdrop() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-    } catch (e: any) {
-      setError(String(e?.message ?? e));
+    } catch (e: unknown) {
+      const errMsg = e instanceof Error ? e.message : String(e);
+      setError(errMsg);
     } finally {
       setLoading(false);
     }

@@ -75,7 +75,7 @@ export default async function ArticleViewPage(props: any) {
     if (e.author_fid) fids.add(String(e.author_fid));
   }
 
-  let pointsMap: Record<string, number> = {};
+  const pointsMap: Record<string, number> = {};
   if (fids.size > 0) {
     try {
       const list = Array.from(fids).map((s) => encodeURIComponent(s)).join(',');
@@ -126,7 +126,7 @@ export default async function ArticleViewPage(props: any) {
                   // Client component; server components can render client components directly
                   <div style={{ marginTop: 8 }}>
                     {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
-                    {/* @ts-ignore */}
+                    {/* @ts-expect-error: ApproveEditButton is a client component rendered in a server component */}
                     <ApproveEditButton slug={article.slug} editId={e.id} />
                   </div>
                 )}

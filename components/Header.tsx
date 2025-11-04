@@ -113,7 +113,9 @@ export default function Header() {
   return (
     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 16px" }}>
       <div>
-        <strong>farpedia</strong>
+        <strong style={{ marginRight: 12 }}>farpedia</strong>
+        {/* Explore button */}
+        <a href="/explore" style={{ marginLeft: 8, fontSize: 14, color: '#0366d6', textDecoration: 'none' }}>Explore</a>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

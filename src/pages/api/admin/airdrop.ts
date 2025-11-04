@@ -28,7 +28,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: 'QuickAuth verification error' });
   }
 
-  const fid = typeof payload === 'object' && payload !== null && 'sub' in payload ? String((payload as any).sub) : null;
+  const fid = typeof payload === 'object' && payload !== null && 'sub' in payload && typeof (payload as Record<string, unknown>).sub === 'string'
+    ? String((payload as Record<string, unknown>).sub)
+    : null;
   if (!fid) return res.status(401).json({ error: 'QuickAuth token missing sub (fid)' });
 
   // Check admin permission (ADMIN_FIDS env or accounts.is_admin)
@@ -69,7 +71,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const txt = await listResp.text();
       return res.status(502).json({ error: 'Supabase REST error', details: txt });
     }
-    const rows = await listResp.json();
+  const rowsJson = await listResp.json();
+  const rows = Array.isArray(rowsJson) ? (rowsJson as Array<Record<string, unknown>>) : [];
 
     // Also compute total across all user_points for share calculation
     const totalResp = await fetch(`${SUPABASE_URL}/rest/v1/user_points?select=total_points`, {
@@ -78,15 +81,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let totalAll = 0;
     if (totalResp.ok) {
       const all = await totalResp.json();
-      if (Array.isArray(all)) totalAll = all.reduce((s: number, r: any) => s + Number(r.total_points || 0), 0);
+      if (Array.isArray(all)) totalAll = all.reduce((s: number, r: Record<string, unknown>) => s + Number(r['total_points'] || 0), 0);
     }
 
     // Build CSV
     const header = 'fid,total_points,share\n';
-    const lines = (rows as any[]).map((r) => {
-      const pts = Number(r.total_points || 0);
+    const lines = (rows as Array<Record<string, unknown>>).map((r) => {
+      const pts = Number(r['total_points'] || 0);
       const share = totalAll > 0 ? (pts / totalAll).toFixed(6) : '0';
-      return `${r.fid},${pts},${share}`;
+      return `${String(r['fid'] ?? '')},${pts},${share}`;
     });
     const csv = header + lines.join('\n');
 
@@ -114,3 +117,6 @@ function getUrlHost(req: NextApiRequest) {
   if (process.env.VERCEL_ENV === 'production') return process.env.NEXT_PUBLIC_URL!;
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
   return 'http://localhost:3000';
+
+}
+
