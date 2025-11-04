@@ -68,11 +68,37 @@ export default async function ArticleViewPage(props: any) {
     }
   }
 
+  // Fetch point totals for article author and edit authors in one query
+  const fids = new Set<string>();
+  if (article.author_fid) fids.add(String(article.author_fid));
+  for (const e of edits) {
+    if (e.author_fid) fids.add(String(e.author_fid));
+  }
+
+  let pointsMap: Record<string, number> = {};
+  if (fids.size > 0) {
+    try {
+      const list = Array.from(fids).map((s) => encodeURIComponent(s)).join(',');
+      const ptsResp = await fetch(`${SUPABASE_URL}/rest/v1/user_points?select=fid,total_points&fid=in.(${list})`, {
+        headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY },
+        next: { revalidate: 60 },
+      });
+      if (ptsResp.ok) {
+        const ptsRows = await ptsResp.json();
+        if (Array.isArray(ptsRows)) {
+          for (const r of ptsRows) pointsMap[String(r.fid)] = Number(r.total_points || 0);
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch user points:', e);
+    }
+  }
+
   return (
     <div style={{ padding: 24 }}>
       <h1>{article.title}</h1>
       <div style={{ color: "#666", marginBottom: 12 }}>
-        By {article.author_fid} • {new Date(article.created_at).toLocaleString()}
+        By {article.author_fid} {pointsMap[article.author_fid] ? `· ${pointsMap[article.author_fid]} pts` : ''} • {new Date(article.created_at).toLocaleString()}
       </div>
 
       <article>
@@ -89,7 +115,7 @@ export default async function ArticleViewPage(props: any) {
               <li key={String(e.id ?? Math.random())} style={{ marginBottom: 12 }}>
                 <div style={{ color: "#333", fontWeight: 600 }}>{String(e.summary ?? "(no summary)")}</div>
                 <div style={{ color: "#666", fontSize: 12 }}>
-                  By {String(e.author_fid ?? "unknown")} • {e.created_at ? new Date(String(e.created_at)).toLocaleString() : ""}
+                  By {String(e.author_fid ?? "unknown")} {pointsMap[String(e.author_fid ?? '')] ? `· ${pointsMap[String(e.author_fid ?? '')]} pts` : ''} • {e.created_at ? new Date(String(e.created_at)).toLocaleString() : ""}
                 </div>
                 <div style={{ marginTop: 8 }}>
                   <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{String(e.body ?? "")}</ReactMarkdown>

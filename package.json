@@ -10,6 +10,7 @@
     "test:watch": "vitest",
     "migrate:psql": "bash ./scripts/apply_migrations.sh",
     "migrate:print": "node ./scripts/print_migrations.js",
+    "recompute:points": "node scripts/recompute_points.js",
     "lint": "next lint"
   },
   "dependencies": {

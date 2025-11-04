@@ -140,11 +140,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(502).json({ error: "Neynar call failed" });
     }
 
-    // Enforce quality gate: require Neynar score > 0.7 to allow publishing.
+    // Enforce quality gate: require Neynar score > 0.7 to allow submission to the review queue.
     if (neynar_score <= 0.7) {
       return res.status(403).json({ error: "Neynar score too low", neynar_score });
     }
 
+    // Create the article as visible but mark as not vetted. We keep articles public
+    // per product decision — only awarding points after approval. The initial edit
+    // proposal is created and must be approved to award contribution points.
     const insertPayload = {
       slug,
       title,
@@ -152,6 +155,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       author_fid: authorFid,
       metadata: metadata || {},
       published: true,
+      vetted: false,
       neynar_score,
     };
 
@@ -174,7 +178,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const rows = await resp.json();
     const inserted = Array.isArray(rows) ? rows[0] : rows;
 
-    return res.status(201).json({ article: inserted });
+    // Create an initial edit proposal for this submission. It will be stored in
+    // `article_edits` with `approved=false`. When an approver accepts the edit
+    // the article will be published and points awarded to the contributor.
+    try {
+      const editPayload = {
+        article_id: inserted.id,
+        author_fid: authorFid,
+        body: content,
+        summary: null,
+        approved: false,
+      };
+
+      const editResp = await fetch(`${SUPABASE_URL}/rest/v1/article_edits`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+        },
+        body: JSON.stringify(editPayload),
+      });
+
+      if (!editResp.ok) {
+        const text = await editResp.text();
+        // We return 201 for the created article but include a warning about the edit creation.
+        return res.status(201).json({ article: inserted, warning: `Article created but edit proposal failed: ${text}` });
+      }
+
+      const editRows = await editResp.json();
+      const createdEdit = Array.isArray(editRows) ? editRows[0] : editRows;
+      return res.status(201).json({ article: inserted, proposal: createdEdit });
+    } catch (err) {
+      console.error("API /api/articles edit creation error:", err);
+      // Return the article but note the edit creation failed.
+      return res.status(201).json({ article: inserted, warning: "Article created but edit proposal failed" });
+    }
   } catch (err) {
     console.error("API /api/articles error:", err);
     return res.status(500).json({ error: "Internal server error" });
