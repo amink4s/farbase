@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   fid text PRIMARY KEY, -- Farcaster FID
   address text, -- optional wallet address
   display_name text,
+  is_admin boolean DEFAULT false,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -44,3 +45,16 @@ EXECUTE FUNCTION trigger_set_updated_at();
 
 -- TODO: Add RLS policies for Supabase auth if using client-side queries.
 -- NOTE: This file is intentionally server-ready; use SUPABASE_SERVICE_ROLE_KEY for server-side inserts/updates.
+
+-- Webhook events table: stores raw payloads received from Farcaster / host.
+CREATE TABLE IF NOT EXISTS webhook_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type text NOT NULL,
+  payload jsonb DEFAULT '{}'::jsonb,
+  headers jsonb DEFAULT '{}'::jsonb,
+  verified boolean DEFAULT false,
+  received_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_webhook_events_event_type ON webhook_events (event_type);
+CREATE INDEX IF NOT EXISTS idx_webhook_events_received_at ON webhook_events (received_at);
