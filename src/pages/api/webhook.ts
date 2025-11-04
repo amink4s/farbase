@@ -15,21 +15,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Basic logging for visibility in server logs
   console.info("/api/webhook received payload", { headers: req.headers, body: req.body });
 
-  // Optional QuickAuth verification: if a Bearer token is provided, try to verify it.
+  // Require QuickAuth token for incoming webhooks.
   const authorization = req.headers.authorization as string | undefined;
+  if (!authorization || !authorization.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Missing QuickAuth token in Authorization header" });
+  }
+
+  const token = authorization.split(" ")[1] as string;
   let verified = false;
-  if (authorization && authorization.startsWith("Bearer ")) {
-    const token = authorization.split(" ")[1] as string;
-    try {
-      await client.verifyJwt({ token, domain: getUrlHost(req) });
-      verified = true;
-    } catch (e) {
-      if (e instanceof Errors.InvalidTokenError) {
-        console.warn("Webhook: invalid QuickAuth token");
-      } else {
-        console.error("Webhook: QuickAuth verification error", e);
-      }
+  try {
+    await client.verifyJwt({ token, domain: getUrlHost(req) });
+    verified = true;
+  } catch (e) {
+    if (e instanceof Errors.InvalidTokenError) {
+      return res.status(401).json({ error: "Invalid QuickAuth token" });
     }
+    console.error("Webhook: QuickAuth verification error", e);
+    return res.status(500).json({ error: "QuickAuth verification error" });
   }
 
   // If Supabase is configured, persist the webhook event to `webhook_events` table.

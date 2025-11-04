@@ -6,6 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "migrate:psql": "bash ./scripts/apply_migrations.sh",
+    "migrate:print": "node ./scripts/print_migrations.js",
     "lint": "next lint"
   },
   "dependencies": {
@@ -29,6 +33,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^1.1.5",
+    "node-mocks-http": "^1.11.0"
   }
 }
