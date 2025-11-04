@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import Link from "next/link";
 import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { Wallet } from "@coinbase/onchainkit/wallet";
 
@@ -113,14 +114,17 @@ export default function Header() {
   return (
     <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 16px" }}>
       <div>
-        <strong style={{ marginRight: 12 }}>farpedia</strong>
+        <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
+          <strong style={{ marginRight: 12, cursor: 'pointer' }}>farpedia</strong>
+        </Link>
         {/* Explore button */}
-        <a href="/explore" style={{ marginLeft: 8, fontSize: 14, color: '#0366d6', textDecoration: 'none' }}>Explore</a>
+        <Link href="/explore" style={{ marginLeft: 8, fontSize: 14, color: '#0366d6', textDecoration: 'none' }}>Explore</Link>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {user ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Link href="/me" style={{ textDecoration: 'none', color: 'inherit' }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, cursor: 'pointer' }}>
             {avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={avatarUrl} alt="avatar" style={{ width: 32, height: 32, borderRadius: 999 }} />
@@ -142,8 +146,9 @@ export default function Header() {
                 style={{ width: 32, height: 32, borderRadius: 999 }}
               />
             )}
-            <div style={{ fontSize: 14 }}>{displayName}</div>
-          </div>
+              <div style={{ fontSize: 14 }}>{displayName}</div>
+            </div>
+          </Link>
         ) : (
           // Wallet will prompt a sign-in / wallet connect in the miniapp
           <Wallet />

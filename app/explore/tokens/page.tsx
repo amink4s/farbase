@@ -33,19 +33,19 @@ export default async function Page() {
 
   return (
     <main style={{ padding: 24 }}>
-      <h1>Tokens</h1>
+      <h1 style={{ marginBottom: 8 }}>Tokens</h1>
       {articles.length === 0 ? (
         <p>No token articles found.</p>
       ) : (
-        <ul>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
           {articles.map((a) => (
-            <li key={a.slug} style={{ marginBottom: 12 }}>
-              <a href={`/articles/${encodeURIComponent(a.slug)}`} style={{ fontWeight: 600 }}>{a.title}</a>
+            <article key={a.slug} style={{ flex: '1 1 260px', minWidth: 220, background: '#fff', padding: 12, borderRadius: 8, boxShadow: '0 6px 18px rgba(2,6,23,0.04)' }}>
+              <a href={`/articles/${encodeURIComponent(a.slug)}`} style={{ fontWeight: 700, display: 'block', fontSize: 16, marginBottom: 6 }}>{a.title}</a>
               <div style={{ color: '#666', fontSize: 12 }}>{a.author_fid} • {a.created_at ? new Date(String(a.created_at)).toLocaleString() : ''}</div>
-              <div style={{ marginTop: 6 }}><ReactMarkdown rehypePlugins={[rehypeSanitize]}>{String((a.metadata as Record<string, unknown> | undefined)?.summary ?? '')}</ReactMarkdown></div>
-            </li>
+              <div style={{ marginTop: 8 }}><ReactMarkdown rehypePlugins={[rehypeSanitize]}>{String((a.metadata as Record<string, unknown> | undefined)?.summary ?? '')}</ReactMarkdown></div>
+            </article>
           ))}
-        </ul>
+        </div>
       )}
     </main>
   );

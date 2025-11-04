@@ -81,8 +81,8 @@ export default function Home() {
           </div>
 
           <div>
-            <Link href="/articles/create" className={styles.createButton}>
-              + Create
+            <Link href="/articles/create" className={styles.createButton} aria-label="Create article">
+              +
             </Link>
           </div>
         </div>
