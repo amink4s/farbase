@@ -4,7 +4,39 @@ import { Errors, createClient } from "@farcaster/quick-auth";
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const NEYNAR_KEY = process.env.NEYNAR_API_KEY;
-const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.ai/v1/score";
+const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.com/v1/score";
+/**
+ * Helper: fetch with retries for transient network errors or 5xx responses.
+ * - Retries on network errors (e.g., DNS, ECONNREFUSED) and on 5xx responses.
+ * - Does not retry on 4xx client errors.
+ */
+async function fetchWithRetries(url: string, init: RequestInit, maxAttempts = 3) {
+  let attempt = 0;
+  while (true) {
+    attempt += 1;
+    try {
+      const resp = await fetch(url, init);
+      // If server error, consider retrying
+      if (resp.status >= 500 && attempt < maxAttempts) {
+        const backoff = Math.floor(200 * Math.pow(2, attempt) + Math.random() * 100);
+        console.warn(`Neynar call got ${resp.status}; retrying attempt ${attempt}/${maxAttempts} after ${backoff}ms`);
+        await new Promise((r) => setTimeout(r, backoff));
+        continue;
+      }
+      return resp;
+    } catch (err: unknown) {
+      // Network error: retry up to maxAttempts
+      const isLast = attempt >= maxAttempts;
+      const e = err as { message?: string; code?: string };
+      const msg = e && e.message ? e.message : String(err);
+      const code = e && e.code ? ` code=${e.code}` : "";
+      console.warn(`Neynar fetch attempt ${attempt} failed: ${msg}${code}`);
+      if (isLast) throw err;
+      const backoff = Math.floor(200 * Math.pow(2, attempt) + Math.random() * 100);
+      await new Promise((r) => setTimeout(r, backoff));
+    }
+  }
+}
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   // Note: this guard runs at import time so developers see a clear error during startup.
@@ -110,14 +142,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
-      const nr = await fetch(NEYNAR_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${NEYNAR_KEY}`,
+      const nr = await fetchWithRetries(
+        NEYNAR_URL,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${NEYNAR_KEY}`,
+          },
+          body: JSON.stringify({ title, text: content }),
         },
-        body: JSON.stringify({ title, text: content }),
-      });
+        3
+      );
 
       if (!nr.ok) {
         const text = await nr.text();
@@ -135,9 +171,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       neynar_score = typeof maybeScore === "number" ? maybeScore : parseFloat(String(maybeScore ?? "NaN"));
       if (!Number.isFinite(neynar_score)) neynar_score = 0;
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Error calling Neynar:", err);
-      return res.status(502).json({ error: "Neynar call failed" });
+      // Include underlying cause when available to aid debugging (e.g. ENOTFOUND)
+      const e = err as { cause?: unknown };
+      const cause = e && e.cause ? e.cause : err;
+      const c = cause as { message?: string };
+      const causeMsg = c && c.message ? c.message : String(cause);
+      return res.status(502).json({ error: "Neynar call failed", details: causeMsg });
     }
 
     // Enforce quality gate: require Neynar score > 0.7 to allow submission to the review queue.
