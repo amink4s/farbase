@@ -2,7 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { Errors, createClient } from "@farcaster/quick-auth";
 
 const NEYNAR_KEY = process.env.NEYNAR_API_KEY;
-const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.ai/v1/score";
+// Default to the documented Neynar base URL (use .com, not .ai)
+const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.com/v1/score";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
