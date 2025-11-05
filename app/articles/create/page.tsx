@@ -9,12 +9,6 @@ export default function CreateArticlePage() {
         <Link href="/">← Home</Link>
       </header>
 
-      <p>
-        This page allows creating a token/project article. For production, QuickAuth is used so the server
-  can verify the author FID. Note: publishing is currently restricted to high-quality authors —
-        new articles are only accepted when the server-side Neynar moderation score is &gt; 0.7.
-      </p>
-
   <ArticleForm />
     </div>
   );
