@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import sdk from "@farcaster/miniapp-sdk";
 
-export default function ArticleForm({ onSuccess }: { onSuccess?: () => void }) {
+export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess?: () => void; onCategoryChange?: (c: "article" | "token") => void }) {
   const [slug, setSlug] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -13,6 +13,7 @@ export default function ArticleForm({ onSuccess }: { onSuccess?: () => void }) {
   const [category, setCategory] = useState<"article" | "token">("article");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [autoSlug, setAutoSlug] = useState(true);
+  const [tokenAddress, setTokenAddress] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,7 +28,8 @@ export default function ArticleForm({ onSuccess }: { onSuccess?: () => void }) {
     }
 
     // Server will verify QuickAuth JWT and set `author_fid` from the token's `sub`.
-    const payload = { slug, title, body };
+  const payload = { slug, title, body, category, metadata: {} as Record<string, unknown> };
+  if (category === "token" && tokenAddress) payload.metadata.tokenAddress = tokenAddress;
 
     try {
       let res: Response;
@@ -112,12 +114,51 @@ export default function ArticleForm({ onSuccess }: { onSuccess?: () => void }) {
       .replace(/-+/g, "-");
   }
 
+  async function ensureUniqueSlug(): Promise<boolean> {
+  const base = slug || makeSlug(title || "");
+    if (!base) {
+      setError("Please provide a title to generate a slug");
+      return false;
+    }
+    // try up to 5 variants
+    for (let i = 0; i < 5; i++) {
+      const candidate = i === 0 ? base : `${base}-${i}`;
+      try {
+        const res = await fetch("/api/articles/check-slug", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug: candidate }),
+        });
+        if (res.ok) {
+          setSlug(candidate);
+          return true;
+        }
+        if (res.status === 409) {
+          // try next
+          continue;
+        }
+        const text = await res.text();
+        setError(`Slug check failed: ${text}`);
+        return false;
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        setError(`Slug check error: ${message}`);
+        return false;
+      }
+    }
+    setError("Could not find an available slug — try a different title or edit slug manually");
+    return false;
+  }
+
   function goNext() {
     if (step === 1) return setStep(2);
     if (step === 2) {
       // if auto slug enabled and title present, generate slug
       if (autoSlug && title) setSlug(makeSlug(title));
-      return setStep(3);
+      // ensure slug uniqueness before proceeding to write step
+      ensureUniqueSlug().then((ok) => {
+        if (ok) setStep(3);
+      });
     }
   }
 
@@ -132,14 +173,14 @@ export default function ArticleForm({ onSuccess }: { onSuccess?: () => void }) {
         <div style={{ marginBottom: 12 }}>
           <h2>Choose category</h2>
           <div style={{ display: "flex", gap: 12 }}>
-            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <input type="radio" name="category" checked={category === "article"} onChange={() => setCategory("article")} />
-              Articles
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <input type="radio" name="category" checked={category === "token"} onChange={() => setCategory("token")} />
-              Tokens
-            </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input type="radio" name="category" checked={category === "article"} onChange={() => { setCategory("article"); onCategoryChange?.("article"); }} />
+                Articles
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <input type="radio" name="category" checked={category === "token"} onChange={() => { setCategory("token"); onCategoryChange?.("token"); }} />
+                Tokens
+              </label>
           </div>
           <div style={{ marginTop: 12 }}>
             <button type="button" onClick={goNext}>Next</button>
@@ -163,6 +204,20 @@ export default function ArticleForm({ onSuccess }: { onSuccess?: () => void }) {
               />
             </label>
           </div>
+
+          {category === "token" && (
+            <div style={{ marginBottom: 8 }}>
+              <label>
+                Token contract address (optional)
+                <input
+                  value={tokenAddress}
+                  onChange={(e) => setTokenAddress(e.target.value)}
+                  placeholder="0x..."
+                  style={{ width: "100%" }}
+                />
+              </label>
+            </div>
+          )}
 
           <div style={{ marginBottom: 8 }}>
             <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
