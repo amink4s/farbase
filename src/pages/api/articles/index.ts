@@ -99,7 +99,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { slug, title, body: content, metadata } = req.body ?? {};
+  const { slug, title, body: content, metadata, category } = req.body ?? {};
 
     if (!slug || !title || !content) {
       return res.status(400).json({ error: "Missing required fields: slug, title, body" });
@@ -194,7 +194,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       title,
       body: content,
       author_fid: authorFid,
-      metadata: metadata || {},
+      metadata: { ...(metadata || {}), ...(category ? { category } : {}) },
       published: true,
       vetted: false,
       neynar_score,

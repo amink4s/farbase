@@ -30,6 +30,8 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
     // Server will verify QuickAuth JWT and set `author_fid` from the token's `sub`.
   const payload = { slug, title, body, category, metadata: {} as Record<string, unknown> };
   if (category === "token" && tokenAddress) payload.metadata.tokenAddress = tokenAddress;
+  // persist category in metadata for server-side queries
+  payload.metadata.category = category;
 
     try {
       let res: Response;
