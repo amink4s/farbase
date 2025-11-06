@@ -61,6 +61,12 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
       setSlug("");
       setTitle("");
       setBody("");
+      
+      // Redirect to home page after successful creation
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+      
       onSuccess?.();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
@@ -169,110 +175,257 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ maxWidth: 800 }}>
+    <form onSubmit={handleSubmit} style={{ maxWidth: 700, margin: '0 auto' }}>
       {step === 1 && (
-        <div style={{ marginBottom: 12 }}>
-          <h2>Choose category</h2>
-          <div style={{ display: "flex", gap: 12 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input type="radio" name="category" checked={category === "article"} onChange={() => { setCategory("article"); onCategoryChange?.("article"); }} />
+        <div style={{ background: 'var(--card-bg)', padding: 24, borderRadius: 12, border: '1px solid var(--border-color)' }}>
+          <h2 style={{ marginBottom: 16, fontSize: 20, fontWeight: 600 }}>Choose category</h2>
+          <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 10, 
+                padding: '12px 20px', 
+                background: category === "article" ? 'var(--foreground)' : 'transparent',
+                color: category === "article" ? 'var(--background)' : 'var(--foreground)',
+                border: '2px solid var(--border-color)',
+                borderRadius: 8,
+                cursor: 'pointer',
+                fontSize: 15,
+                fontWeight: 500,
+                transition: 'all 0.2s'
+              }}>
+                <input 
+                  type="radio" 
+                  name="category" 
+                  checked={category === "article"} 
+                  onChange={() => { setCategory("article"); onCategoryChange?.("article"); }}
+                  style={{ margin: 0 }}
+                />
                 Articles
               </label>
-              <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <input type="radio" name="category" checked={category === "token"} onChange={() => { setCategory("token"); onCategoryChange?.("token"); }} />
+              <label style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 10, 
+                padding: '12px 20px', 
+                background: category === "token" ? 'var(--foreground)' : 'transparent',
+                color: category === "token" ? 'var(--background)' : 'var(--foreground)',
+                border: '2px solid var(--border-color)',
+                borderRadius: 8,
+                cursor: 'pointer',
+                fontSize: 15,
+                fontWeight: 500,
+                transition: 'all 0.2s'
+              }}>
+                <input 
+                  type="radio" 
+                  name="category" 
+                  checked={category === "token"} 
+                  onChange={() => { setCategory("token"); onCategoryChange?.("token"); }}
+                  style={{ margin: 0 }}
+                />
                 Tokens
               </label>
           </div>
-          <div style={{ marginTop: 12 }}>
-            <button type="button" onClick={goNext}>Next</button>
+          <div>
+            <button 
+              type="button" 
+              onClick={goNext}
+              style={{
+                padding: '12px 24px',
+                background: 'var(--foreground)',
+                color: 'var(--background)',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Next →
+            </button>
           </div>
         </div>
       )}
 
       {step === 2 && (
-        <div>
-          <h2>Settings</h2>
+        <div style={{ background: 'var(--card-bg)', padding: 24, borderRadius: 12, border: '1px solid var(--border-color)' }}>
+          <h2 style={{ marginBottom: 16, fontSize: 20, fontWeight: 600 }}>Settings</h2>
 
-          <div style={{ marginBottom: 8 }}>
-            <label>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: 'var(--foreground)' }}>
               Title
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder={category === "token" ? "Token / Project name" : "Article title"}
-                required
-                style={{ width: "100%" }}
-              />
             </label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={category === "token" ? "Token / Project name" : "Article title"}
+              required
+              style={{ 
+                width: "100%", 
+                padding: '12px 16px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--input-border)',
+                borderRadius: 8,
+                fontSize: 15,
+                color: 'var(--foreground)'
+              }}
+            />
           </div>
 
           {category === "token" && (
-            <div style={{ marginBottom: 8 }}>
-              <label>
-                Token contract address (optional)
-                <input
-                  value={tokenAddress}
-                  onChange={(e) => setTokenAddress(e.target.value)}
-                  placeholder="0x..."
-                  style={{ width: "100%" }}
-                />
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: 'var(--foreground)' }}>
+                Token contract address <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(optional)</span>
               </label>
+              <input
+                value={tokenAddress}
+                onChange={(e) => setTokenAddress(e.target.value)}
+                placeholder="0x..."
+                style={{ 
+                  width: "100%", 
+                  padding: '12px 16px',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--input-border)',
+                  borderRadius: 8,
+                  fontSize: 15,
+                  color: 'var(--foreground)'
+                }}
+              />
             </div>
           )}
 
-          {/* Slug is always auto-generated from title now; no manual edit UI */}
-
-          <div style={{ marginTop: 12, display: "flex", gap: 8 }}>
-            <button type="button" onClick={goBack}>Back</button>
-            <button type="button" onClick={goNext} disabled={!title}>Continue to article</button>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button 
+              type="button" 
+              onClick={goBack}
+              style={{
+                padding: '12px 24px',
+                background: 'transparent',
+                color: 'var(--foreground)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 8,
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              ← Back
+            </button>
+            <button 
+              type="button" 
+              onClick={goNext} 
+              disabled={!title}
+              style={{
+                padding: '12px 24px',
+                background: title ? 'var(--foreground)' : 'var(--border-color)',
+                color: title ? 'var(--background)' : 'var(--text-secondary)',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: title ? 'pointer' : 'not-allowed'
+              }}
+            >
+              Continue →
+            </button>
           </div>
         </div>
       )}
 
       {step === 3 && (
-        <div>
-          <h2>Write article</h2>
-          <div style={{ marginBottom: 8 }}>
-            <label>
-              Body
-              <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                placeholder="Article content (Markdown supported)"
-                required
-                rows={12}
-                style={{ width: "100%" }}
-              />
+        <div style={{ background: 'var(--card-bg)', padding: 24, borderRadius: 12, border: '1px solid var(--border-color)' }}>
+          <h2 style={{ marginBottom: 16, fontSize: 20, fontWeight: 600 }}>Write your article</h2>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: 'var(--foreground)' }}>
+              Content <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(Markdown supported)</span>
             </label>
+            <textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Write your article content here..."
+              required
+              rows={14}
+              style={{ 
+                width: "100%", 
+                padding: '12px 16px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--input-border)',
+                borderRadius: 8,
+                fontSize: 15,
+                color: 'var(--foreground)',
+                fontFamily: 'inherit',
+                resize: 'vertical'
+              }}
+            />
+          </div>
+          
+          {error && (
+            <div style={{ 
+              color: '#ef4444', 
+              marginBottom: 16, 
+              padding: '12px 16px',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: 8,
+              fontSize: 14
+            }}>
+              {error}
+            </div>
+          )}
+
+          {neynarScore !== null && (
+            <div style={{ 
+              marginBottom: 16, 
+              padding: '12px 16px',
+              background: neynarScore > 0.9 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+              border: `1px solid ${neynarScore > 0.9 ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+              borderRadius: 8,
+              fontSize: 14
+            }}>
+              Neynar score: <strong>{neynarScore.toFixed(3)}</strong> {neynarScore > 0.9 ? '✓ Eligible' : '✗ Score must be above 0.9'}
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            <button 
+              type="button" 
+              onClick={handleCheckScore} 
+              disabled={checkingScore || !body}
+              style={{
+                padding: '12px 20px',
+                background: 'transparent',
+                color: 'var(--foreground)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: checkingScore || !body ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {checkingScore ? 'Checking…' : 'Check Score'}
+            </button>
+
+            <button
+              type="submit"
+              disabled={loading || (neynarScore !== null && neynarScore <= 0.9)}
+              title={neynarScore !== null && neynarScore <= 0.9 ? "Your Neynar score must be above 0.9 to publish" : undefined}
+              style={{
+                padding: '12px 32px',
+                background: (loading || (neynarScore !== null && neynarScore <= 0.9)) ? 'var(--border-color)' : 'var(--foreground)',
+                color: (loading || (neynarScore !== null && neynarScore <= 0.9)) ? 'var(--text-secondary)' : 'var(--background)',
+                border: 'none',
+                borderRadius: 8,
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: (loading || (neynarScore !== null && neynarScore <= 0.9)) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {loading ? 'Creating…' : 'Publish Article'}
+            </button>
           </div>
         </div>
       )}
-
-      {error && (
-        <div style={{ color: "#b00020", marginBottom: 8 }}>
-          Error: {error}
-        </div>
-      )}
-
-      {neynarScore !== null ? (
-        <div style={{ marginBottom: 8 }}>
-          Neynar score: <strong>{neynarScore.toFixed(3)}</strong> {neynarScore > 0.7 ? "(eligible)" : "(too low)"}
-        </div>
-      ) : null}
-
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <button type="button" onClick={handleCheckScore} disabled={checkingScore || step !== 3}>
-          {checkingScore ? "Checking…" : "Check Neynar Score"}
-        </button>
-
-        <button
-          type="submit"
-          disabled={loading || step !== 3 || (neynarScore !== null && neynarScore <= 0.7)}
-          title={neynarScore !== null && neynarScore <= 0.7 ? "Neynar score too low — check score and improve before publishing" : undefined}
-        >
-          {loading ? "Creating…" : "Create Article"}
-        </button>
-      </div>
     </form>
   );
 }

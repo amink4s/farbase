@@ -2,12 +2,22 @@
   :root {
     --background: #ffffff;
     --foreground: #171717;
+    --card-bg: #ffffff;
+    --border-color: #e5e7eb;
+    --text-secondary: #666666;
+    --input-bg: #ffffff;
+    --input-border: #d1d5db;
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
       --background: #0a0a0a;
       --foreground: #ededed;
+      --card-bg: #1a1a1a;
+      --border-color: #333333;
+      --text-secondary: #9ca3af;
+      --input-bg: #1a1a1a;
+      --input-border: #333333;
     }
   }
 

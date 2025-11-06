@@ -39,10 +39,10 @@ export default async function Page() {
       ) : (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
           {articles.map((a) => (
-            <article key={a.slug} style={{ flex: '1 1 260px', minWidth: 220, background: '#fff', padding: 12, borderRadius: 8, boxShadow: '0 6px 18px rgba(2,6,23,0.04)' }}>
-              <a href={`/articles/${encodeURIComponent(a.slug)}`} style={{ fontWeight: 700, display: 'block', fontSize: 16, marginBottom: 6 }}>{a.title}</a>
-              <div style={{ color: '#666', fontSize: 12 }}>{a.author_fid} • {a.created_at ? new Date(String(a.created_at)).toLocaleString() : ''}</div>
-              <div style={{ marginTop: 8 }}><ReactMarkdown rehypePlugins={[rehypeSanitize]}>{String((a.metadata as Record<string, unknown> | undefined)?.summary ?? '')}</ReactMarkdown></div>
+            <article key={a.slug} style={{ flex: '1 1 260px', minWidth: 220, background: 'var(--card-bg, #fff)', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', border: '1px solid var(--border-color, #e5e7eb)' }}>
+              <a href={`/articles/${encodeURIComponent(a.slug)}`} style={{ fontWeight: 600, display: 'block', fontSize: 16, marginBottom: 8, color: 'var(--foreground)' }}>{a.title}</a>
+              <div style={{ color: 'var(--text-secondary, #666)', fontSize: 13 }}>{a.author_fid} • {a.created_at ? new Date(String(a.created_at)).toLocaleString() : ''}</div>
+              <div style={{ marginTop: 8, color: 'var(--foreground)' }}><ReactMarkdown rehypePlugins={[rehypeSanitize]}>{String((a.metadata as Record<string, unknown> | undefined)?.summary ?? '')}</ReactMarkdown></div>
             </article>
           ))}
         </div>
