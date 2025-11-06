@@ -136,7 +136,7 @@ export default async function ArticleViewPage(props: any) {
         )}
 
         {/* Client-side form to propose a new edit */}
-        <EditProposalForm slug={article.slug} onSuccess={() => { /* no-op */ }} />
+        <EditProposalForm slug={article.slug} />
       </section>
     </div>
   );
