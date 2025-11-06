@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import { useMiniKit } from '@coinbase/onchainkit/minikit';
+import { useMiniKit, useQuickAuth } from '@coinbase/onchainkit/minikit';
 
 type Contribution = {
   id?: number;
@@ -13,6 +13,9 @@ type Contribution = {
 };
 
 export default function MePage() {
+  // Authenticate user and track in accounts table
+  const { data: _authData } = useQuickAuth<{ userFid: number }>("/api/auth");
+  
   const mini = useMiniKit();
   const rawUser = mini?.context?.user as unknown | undefined;
   const user = typeof rawUser === 'object' && rawUser !== null ? (rawUser as Record<string, unknown>) : undefined;

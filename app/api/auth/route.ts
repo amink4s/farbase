@@ -5,14 +5,22 @@ import { upsertAccount } from "@/src/lib/upsertAccount";
 const client = createClient();
 
 export async function GET(request: NextRequest) {
+  console.log("[AUTH] ========================================");
+  console.log("[AUTH] Auth endpoint called");
+  console.log("[AUTH] URL:", request.url);
+  console.log("[AUTH] Method:", request.method);
+  
   // Because we're fetching this endpoint via `sdk.quickAuth.fetch`,
   // if we're in a mini app, the request will include the necessary `Authorization` header.
   const authorization = request.headers.get("Authorization");
 
   // Here we ensure that we have a valid token.
   if (!authorization || !authorization.startsWith("Bearer ")) {
+    console.log("[AUTH] ✗ Missing or invalid Authorization header");
     return NextResponse.json({ message: "Missing token" }, { status: 401 });
   }
+  
+  console.log("[AUTH] ✓ Authorization header present");
 
   try {
     // Now we verify the token. `domain` must match the domain of the request.
