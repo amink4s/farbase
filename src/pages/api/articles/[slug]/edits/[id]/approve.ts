@@ -35,8 +35,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "QuickAuth verification error" });
   }
 
-  const maybe = payload as { sub?: string } | undefined;
-  const actorFid = maybe && typeof maybe.sub === "string" ? maybe.sub : null;
+    // Handle both string and number FID from JWT payload
+    const maybe = payload as { sub?: string | number } | undefined;
+    const actorFid = maybe && (typeof maybe.sub === "string" || typeof maybe.sub === "number") ? String(maybe.sub) : null;
   if (!actorFid) return res.status(401).json({ error: "QuickAuth token missing sub (fid)" });
 
   try {
