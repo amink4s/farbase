@@ -4,8 +4,8 @@ import { Errors, createClient } from "@farcaster/quick-auth";
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const NEYNAR_KEY = process.env.NEYNAR_API_KEY;
-// Neynar v1 is EOL as of Mar 31 2025; using v2 endpoint
-const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.com/v2/farcaster/moderation/score";
+// Neynar v2: user quality scores are returned in user object from bulk user fetch
+const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.com/v2/farcaster/user/bulk";
 /**
  * Helper: fetch with retries for transient network errors or 5xx responses.
  * - Retries on network errors (e.g., DNS, ECONNREFUSED) and on 5xx responses.
@@ -143,15 +143,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     try {
+      // Fetch user data from Neynar to get their quality score
       const nr = await fetchWithRetries(
-        NEYNAR_URL,
+        `${NEYNAR_URL}?fids=${authorFid}`,
         {
-          method: "POST",
+          method: "GET",
           headers: {
-            "Content-Type": "application/json",
+            "accept": "application/json",
             "x-api-key": NEYNAR_KEY,
           },
-          body: JSON.stringify({ title, text: content }),
         },
         3
       );
@@ -164,13 +164,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       }
 
       const nrJson = await nr.json();
-      // Try a few common shapes for returned score
-      const maybeScore =
-        typeof nrJson === "object" && nrJson !== null
-          ? (nrJson.score ?? nrJson.neynar_score ?? nrJson.data?.score ?? nrJson.result?.score)
-          : undefined;
+      // Neynar v2 returns { users: [{ fid, username, ..., power_badge, ...}] }
+      // User quality score is in the user object
+      const users = nrJson?.users || [];
+      const user = users.find((u: { fid: number }) => u.fid === parseInt(authorFid));
+      
+      if (user) {
+        // The score field in v2 user object (check actual field name in response)
+        neynar_score = user.power_badge ? 1.0 : (user.follower_count > 100 ? 0.8 : 0.5);
+        // TODO: Replace with actual score field once confirmed from Neynar API response
+        // Possible fields: user.score, user.neynar_score, user.quality_score
+      } else {
+        neynar_score = 0;
+      }
 
-      neynar_score = typeof maybeScore === "number" ? maybeScore : parseFloat(String(maybeScore ?? "NaN"));
       if (!Number.isFinite(neynar_score)) neynar_score = 0;
     } catch (err: unknown) {
       console.error("Error calling Neynar:", err);

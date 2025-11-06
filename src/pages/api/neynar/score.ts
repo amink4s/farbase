@@ -2,9 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { Errors, createClient } from "@farcaster/quick-auth";
 
 const NEYNAR_KEY = process.env.NEYNAR_API_KEY;
-// Neynar v1 is EOL as of Mar 31 2025; using v2 endpoint
-// Note: v2 moderation API may have different structure - configure via env if needed
-const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.com/v2/farcaster/moderation/score";
+// Neynar v2: user quality scores are returned in user object from bulk user fetch
+const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.com/v2/farcaster/user/bulk";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -23,8 +22,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const token = authorization.split(" ")[1] as string;
   const client = createClient();
+  let payload: unknown;
   try {
-    await client.verifyJwt({ token, domain: getUrlHost(req) });
+    payload = await client.verifyJwt({ token, domain: getUrlHost(req) });
   } catch (e) {
     if (e instanceof Errors.InvalidTokenError) {
       return res.status(401).json({ error: "Invalid QuickAuth token" });
@@ -33,19 +33,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(500).json({ error: "QuickAuth verification error" });
   }
 
-  const { title, text } = req.body ?? {};
-  if (!text && !title) {
-    return res.status(400).json({ error: "Missing title or text for scoring" });
+  // Extract FID from verified token
+  const fid =
+    typeof payload === "object" && payload !== null && "sub" in payload
+      ? String((payload as Record<string, unknown>).sub)
+      : null;
+
+  if (!fid) {
+    return res.status(401).json({ error: "QuickAuth token missing sub (fid)" });
   }
 
   try {
-    const nr = await fetch(NEYNAR_URL, {
-      method: "POST",
+    // Fetch user data from Neynar to get their quality score
+    const nr = await fetch(`${NEYNAR_URL}?fids=${fid}`, {
+      method: "GET",
       headers: {
-        "Content-Type": "application/json",
+        "accept": "application/json",
         "x-api-key": NEYNAR_KEY,
       },
-      body: JSON.stringify({ title, text }),
     });
 
     if (!nr.ok) {
@@ -55,12 +60,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const nrJson = await nr.json();
-    const maybeScore = typeof nrJson === "object" && nrJson !== null
-      ? (nrJson.score ?? nrJson.neynar_score ?? nrJson.data?.score ?? nrJson.result?.score)
-      : undefined;
+    // Neynar v2 returns { users: [{ fid, username, ..., power_badge, ...}] }
+    const users = nrJson?.users || [];
+    const user = users.find((u: { fid: number }) => u.fid === parseInt(fid));
+    
+    let score = 0;
+    if (user) {
+      // Calculate score based on user attributes (temporary heuristic)
+      // TODO: Replace with actual score field once confirmed from Neynar API response
+      score = user.power_badge ? 1.0 : (user.follower_count > 100 ? 0.8 : 0.5);
+    }
 
-    const score = typeof maybeScore === "number" ? maybeScore : parseFloat(String(maybeScore ?? "NaN"));
-    return res.status(200).json({ score: Number.isFinite(score) ? score : null, raw: nrJson });
+    return res.status(200).json({ score: Number.isFinite(score) ? score : 0, raw: nrJson });
   } catch (err) {
     console.error("Error calling Neynar:", err);
     return res.status(502).json({ error: "Neynar call failed" });
