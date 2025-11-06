@@ -13,6 +13,7 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
   const [category, setCategory] = useState<"article" | "token">("article");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [tokenAddress, setTokenAddress] = useState("");
+    const [launcher, setLauncher] = useState<"clanker" | "zora" | "other">("clanker");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,6 +30,7 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
     // Server will verify QuickAuth JWT and set `author_fid` from the token's `sub`.
   const payload = { slug, title, body, category, metadata: {} as Record<string, unknown> };
   if (category === "token" && tokenAddress) payload.metadata.tokenAddress = tokenAddress;
+      if (category === "token") payload.metadata.launcher = launcher;
   // persist category in metadata for server-side queries
   payload.metadata.category = category;
 
@@ -201,7 +203,7 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
                   onChange={() => { setCategory("article"); onCategoryChange?.("article"); }}
                   style={{ margin: 0 }}
                 />
-                Articles
+                  Project
               </label>
               <label style={{ 
                 display: 'flex', 
@@ -224,7 +226,7 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
                   onChange={() => { setCategory("token"); onCategoryChange?.("token"); }}
                   style={{ margin: 0 }}
                 />
-                Tokens
+                  Token
               </label>
           </div>
           <div>
@@ -274,6 +276,32 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
           </div>
 
           {category === "token" && (
+              <>
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: 'var(--foreground)' }}>
+                    Launcher
+                  </label>
+                  <select
+                    value={launcher}
+                    onChange={(e) => setLauncher(e.target.value as "clanker" | "zora" | "other")}
+                    required
+                    style={{ 
+                      width: "100%", 
+                      padding: '12px 16px',
+                      background: 'var(--input-bg)',
+                      border: '1px solid var(--input-border)',
+                      borderRadius: 8,
+                      fontSize: 15,
+                      color: 'var(--foreground)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="clanker">Clanker</option>
+                    <option value="zora">Zora</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
             <div style={{ marginBottom: 20 }}>
               <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: 'var(--foreground)' }}>
                 Token contract address <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(optional)</span>
@@ -293,6 +321,7 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
                 }}
               />
             </div>
+              </>
           )}
 
           <div style={{ display: 'flex', gap: 12 }}>
