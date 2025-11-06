@@ -1,5 +1,6 @@
 import { Errors, createClient } from "@farcaster/quick-auth";
 import { NextRequest, NextResponse } from "next/server";
+import { upsertAccount } from "@/src/lib/upsertAccount";
 
 const client = createClient();
 
@@ -27,6 +28,10 @@ export async function GET(request: NextRequest) {
     // You can now use this to do anything you want, e.g. fetch the user's data from your database
     // or fetch the user's info from a service like Neynar.
     const userFid = payload.sub;
+
+    // Automatically create/update account entry when user authenticates
+    // This ensures all users who open the app are tracked in the accounts table
+    await upsertAccount(String(userFid));
 
     // By default, we'll return the user's FID. Update this to meet your needs.
     return NextResponse.json({ userFid });

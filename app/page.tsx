@@ -72,7 +72,7 @@ export default function Home() {
           <div className={styles.searchWrapper}>
             <input
               className={styles.searchInput}
-              placeholder="Search Farpedia — tokens, projects, people..."
+              placeholder="Search tokens or projects"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               aria-label="Search farpedia"
