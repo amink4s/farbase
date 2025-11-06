@@ -22,8 +22,8 @@ export default async function Page() {
     return <div style={{ padding: 24 }}>Missing Supabase configuration</div>;
   }
 
-  // Filter articles where metadata->>'category' = 'project'
-  const url = `${SUPABASE_URL}/rest/v1/articles?select=slug,title,metadata,author_fid,created_at&metadata->>category=eq.project&order=created_at.desc&limit=200`;
+  // Filter articles where metadata->>'category' = 'article' (projects/general articles, not tokens)
+  const url = `${SUPABASE_URL}/rest/v1/articles?select=slug,title,metadata,author_fid,created_at&metadata->>category=eq.article&order=created_at.desc&limit=200`;
   const resp = await fetch(url, { headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY }, next: { revalidate: 60 } });
   if (!resp.ok) {
     return <div style={{ padding: 24 }}>Failed to load projects list</div>;

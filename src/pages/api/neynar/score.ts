@@ -64,11 +64,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const users = nrJson?.users || [];
     const user = users.find((u: { fid: number }) => u.fid === parseInt(fid));
     
+    console.log("Neynar score check for FID", fid, ":", JSON.stringify(user, null, 2));
+    
     let score = 0;
     if (user) {
-      // Calculate score based on user attributes (temporary heuristic)
-      // TODO: Replace with actual score field once confirmed from Neynar API response
-      score = user.power_badge ? 1.0 : (user.follower_count > 100 ? 0.8 : 0.5);
+      // Temporarily use a permissive scoring approach
+      const hasPowerBadge = user.power_badge === true;
+      const hasFollowers = (user.follower_count ?? 0) >= 10;
+      const isActive = user.active_status === "active";
+      
+      if (hasPowerBadge) {
+        score = 1.0;
+      } else if (isActive && hasFollowers) {
+        score = 0.9;
+      } else if (hasFollowers) {
+        score = 0.8;
+      } else if (isActive) {
+        score = 0.75;
+      } else {
+        score = 0.6;
+      }
+      // TODO: Replace with actual score field from Neynar response
     }
 
     return res.status(200).json({ score: Number.isFinite(score) ? score : 0, raw: nrJson });

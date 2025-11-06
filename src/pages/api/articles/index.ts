@@ -169,11 +169,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const users = nrJson?.users || [];
       const user = users.find((u: { fid: number }) => u.fid === parseInt(authorFid));
       
+      // Log the full user object to identify the actual score field
+      console.log("Neynar user response for FID", authorFid, ":", JSON.stringify(user, null, 2));
+      
       if (user) {
-        // The score field in v2 user object (check actual field name in response)
-        neynar_score = user.power_badge ? 1.0 : (user.follower_count > 100 ? 0.8 : 0.5);
-        // TODO: Replace with actual score field once confirmed from Neynar API response
-        // Possible fields: user.score, user.neynar_score, user.quality_score
+        // Temporarily use a permissive scoring approach until we identify the actual score field
+        // Allow users with power_badge OR reasonable follower count OR active status
+        const hasPowerBadge = user.power_badge === true;
+        const hasFollowers = (user.follower_count ?? 0) >= 10; // Lower threshold - 10+ followers
+        const isActive = user.active_status === "active";
+        
+        // Score calculation: allow most real users through
+        if (hasPowerBadge) {
+          neynar_score = 1.0;
+        } else if (isActive && hasFollowers) {
+          neynar_score = 0.9;
+        } else if (hasFollowers) {
+          neynar_score = 0.8;
+        } else if (isActive) {
+          neynar_score = 0.75;
+        } else {
+          neynar_score = 0.6; // Even brand new users get a passing score
+        }
+        
+        // TODO: Replace with actual score field from Neynar API response
+        // Check logs for fields like: user.score, user.neynar_score, user.quality_score, etc.
       } else {
         neynar_score = 0;
       }
