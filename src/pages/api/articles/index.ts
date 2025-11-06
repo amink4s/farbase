@@ -4,7 +4,8 @@ import { Errors, createClient } from "@farcaster/quick-auth";
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const NEYNAR_KEY = process.env.NEYNAR_API_KEY;
-const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.com/v1/score";
+// Neynar v1 is EOL as of Mar 31 2025; using v2 endpoint
+const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.com/v2/farcaster/moderation/score";
 /**
  * Helper: fetch with retries for transient network errors or 5xx responses.
  * - Retries on network errors (e.g., DNS, ECONNREFUSED) and on 5xx responses.
@@ -148,7 +149,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${NEYNAR_KEY}`,
+            "x-api-key": NEYNAR_KEY,
           },
           body: JSON.stringify({ title, text: content }),
         },

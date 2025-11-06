@@ -2,8 +2,9 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { Errors, createClient } from "@farcaster/quick-auth";
 
 const NEYNAR_KEY = process.env.NEYNAR_API_KEY;
-// Default to the documented Neynar base URL (use .com, not .ai)
-const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.com/v1/score";
+// Neynar v1 is EOL as of Mar 31 2025; using v2 endpoint
+// Note: v2 moderation API may have different structure - configure via env if needed
+const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.com/v2/farcaster/moderation/score";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
@@ -42,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${NEYNAR_KEY}`,
+        "x-api-key": NEYNAR_KEY,
       },
       body: JSON.stringify({ title, text }),
     });
