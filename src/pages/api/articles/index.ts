@@ -151,6 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           headers: {
             "accept": "application/json",
             "x-api-key": NEYNAR_KEY,
+            "x-neynar-experimental": "true",
           },
         },
         3
@@ -173,27 +174,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       console.log("Neynar user response for FID", authorFid, ":", JSON.stringify(user, null, 2));
       
       if (user) {
-        // Temporarily use a permissive scoring approach until we identify the actual score field
-        // Allow users with power_badge OR reasonable follower count OR active status
-        const hasPowerBadge = user.power_badge === true;
-        const hasFollowers = (user.follower_count ?? 0) >= 10; // Lower threshold - 10+ followers
-        const isActive = user.active_status === "active";
+        // Check for actual Neynar score field (multiple possible names)
+        const explicitScore = user.score ?? user.neynar_score ?? user.quality_score ?? user.experimental_score ?? null;
         
-        // Score calculation: allow most real users through
-        if (hasPowerBadge) {
-          neynar_score = 1.0;
-        } else if (isActive && hasFollowers) {
-          neynar_score = 0.9;
-        } else if (hasFollowers) {
-          neynar_score = 0.8;
-        } else if (isActive) {
-          neynar_score = 0.75;
+        if (explicitScore !== null && typeof explicitScore === 'number') {
+          neynar_score = explicitScore;
         } else {
-          neynar_score = 0.6; // Even brand new users get a passing score
+          // Fallback: deny by default if no score field found
+          console.warn("No score field found in Neynar response for FID", authorFid);
+          neynar_score = 0;
         }
-        
-        // TODO: Replace with actual score field from Neynar API response
-        // Check logs for fields like: user.score, user.neynar_score, user.quality_score, etc.
       } else {
         neynar_score = 0;
       }
@@ -209,8 +199,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(502).json({ error: "Neynar call failed", details: causeMsg });
     }
 
-    // Enforce quality gate: require Neynar score > 0.7 to allow submission to the review queue.
-    if (neynar_score <= 0.7) {
+    // Enforce quality gate: require Neynar score > 0.9 (strict threshold)
+    if (neynar_score < 0.9) {
       return res.status(403).json({ error: "Neynar score too low", neynar_score });
     }
 

@@ -50,6 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       headers: {
         "accept": "application/json",
         "x-api-key": NEYNAR_KEY,
+        "x-neynar-experimental": "true",
       },
     });
 
@@ -68,23 +69,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     
     let score = 0;
     if (user) {
-      // Temporarily use a permissive scoring approach
-      const hasPowerBadge = user.power_badge === true;
-      const hasFollowers = (user.follower_count ?? 0) >= 10;
-      const isActive = user.active_status === "active";
+      // Check for actual Neynar score field (multiple possible names)
+      const explicitScore = user.score ?? user.neynar_score ?? user.quality_score ?? user.experimental_score ?? null;
       
-      if (hasPowerBadge) {
-        score = 1.0;
-      } else if (isActive && hasFollowers) {
-        score = 0.9;
-      } else if (hasFollowers) {
-        score = 0.8;
-      } else if (isActive) {
-        score = 0.75;
+      if (explicitScore !== null && typeof explicitScore === 'number') {
+        score = explicitScore;
       } else {
-        score = 0.6;
+        console.warn("No score field found in Neynar response for FID", fid);
+        score = 0;
       }
-      // TODO: Replace with actual score field from Neynar response
     }
 
     return res.status(200).json({ score: Number.isFinite(score) ? score : 0, raw: nrJson });

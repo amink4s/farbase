@@ -25,8 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const encoded = encodeURIComponent(`slug=eq.${slug}`);
-    const url = `${SUPABASE_URL}/rest/v1/articles?select=id&${encoded}&limit=1`;
+    const url = `${SUPABASE_URL}/rest/v1/articles?select=id&slug=eq.${encodeURIComponent(slug)}&limit=1`;
     const resp = await fetch(url, {
       headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY },
     });
