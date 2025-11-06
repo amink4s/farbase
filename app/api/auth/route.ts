@@ -29,9 +29,12 @@ export async function GET(request: NextRequest) {
     // or fetch the user's info from a service like Neynar.
     const userFid = payload.sub;
 
+    console.log(`[AUTH] User authenticated - FID: ${userFid}`);
+
     // Automatically create/update account entry when user authenticates
     // This ensures all users who open the app are tracked in the accounts table
-    await upsertAccount(String(userFid));
+    const upsertResult = await upsertAccount(String(userFid));
+    console.log(`[AUTH] Account upsert result:`, upsertResult);
 
     // By default, we'll return the user's FID. Update this to meet your needs.
     return NextResponse.json({ userFid });
