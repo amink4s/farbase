@@ -7,8 +7,6 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [loading, setLoading] = useState(false);
-  const [checkingScore, setCheckingScore] = useState(false);
-  const [neynarScore, setNeynarScore] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<"article" | "token">("article");
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -19,13 +17,6 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
     e.preventDefault();
     setLoading(true);
     setError(null);
-
-    // Client-side guard: if we have a Neynar score and it's too low, prevent submit.
-    if (neynarScore !== null && neynarScore <= 0.7) {
-      setError("Neynar score too low — you cannot publish until your score is above 0.7");
-      setLoading(false);
-      return;
-    }
 
     // Server will verify QuickAuth JWT and set `author_fid` from the token's `sub`.
   const payload = { slug, title, body, category, metadata: {} as Record<string, unknown> };
@@ -74,43 +65,6 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
       const message = err instanceof Error ? err.message : String(err);
       setError(message);
       setLoading(false);
-    }
-  }
-
-  async function handleCheckScore() {
-    setCheckingScore(true);
-    setError(null);
-    try {
-      let res: Response;
-      const payload = { title, text: body };
-
-      if (sdk && sdk.quickAuth && typeof sdk.quickAuth.fetch === "function") {
-        res = await sdk.quickAuth.fetch("/api/neynar/score", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        res = await fetch("/api/neynar/score", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      }
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || res.statusText);
-      }
-
-      const data = await res.json();
-      setNeynarScore(typeof data?.score === "number" ? data.score : null);
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      setError(message);
-      setNeynarScore(null);
-    } finally {
-      setCheckingScore(false);
     }
   }
 
@@ -403,51 +357,19 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
             </div>
           )}
 
-          {neynarScore !== null && (
-            <div style={{ 
-              marginBottom: 16, 
-              padding: '12px 16px',
-              background: neynarScore > 0.9 ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-              border: `1px solid ${neynarScore > 0.9 ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
-              borderRadius: 8,
-              fontSize: 14
-            }}>
-              Neynar score: <strong>{neynarScore.toFixed(3)}</strong> {neynarScore > 0.9 ? '✓ Eligible' : '✗ Score must be above 0.9'}
-            </div>
-          )}
-
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button 
-              type="button" 
-              onClick={handleCheckScore} 
-              disabled={checkingScore || !body}
-              style={{
-                padding: '12px 20px',
-                background: 'transparent',
-                color: 'var(--foreground)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 8,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: checkingScore || !body ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {checkingScore ? 'Checking…' : 'Check Score'}
-            </button>
-
             <button
               type="submit"
-              disabled={loading || (neynarScore !== null && neynarScore <= 0.9)}
-              title={neynarScore !== null && neynarScore <= 0.9 ? "Your Neynar score must be above 0.9 to publish" : undefined}
+              disabled={loading}
               style={{
                 padding: '12px 32px',
-                background: (loading || (neynarScore !== null && neynarScore <= 0.9)) ? 'var(--border-color)' : 'var(--foreground)',
-                color: (loading || (neynarScore !== null && neynarScore <= 0.9)) ? 'var(--text-secondary)' : 'var(--background)',
+                background: loading ? 'var(--border-color)' : 'var(--foreground)',
+                color: loading ? 'var(--text-secondary)' : 'var(--background)',
                 border: 'none',
                 borderRadius: 8,
                 fontSize: 15,
                 fontWeight: 600,
-                cursor: (loading || (neynarScore !== null && neynarScore <= 0.9)) ? 'not-allowed' : 'pointer'
+                cursor: loading ? 'not-allowed' : 'pointer'
               }}
             >
               {loading ? 'Creating…' : 'Publish Article'}
