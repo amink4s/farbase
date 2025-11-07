@@ -4,7 +4,7 @@ import rehypeSanitize from "rehype-sanitize";
 import Link from "next/link";
 import Image from "next/image";
 import { LaunchButton } from "@/components/LaunchButton";
-import { ApproveButton } from "@/components/ApproveButton";
+import { ArticleAdminSection } from "@/components/ArticleAdminSection";
 
 // Use a loose prop signature to satisfy Next.js PageProps constraints in the app router
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -251,7 +251,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
       </article>
 
       {/* Admin: Approve pending edits */}
-      <ApproveButton articleId={article.id} articleSlug={slug} />
+      <ArticleAdminSection articleId={article.id} articleSlug={slug} />
     </div>
   );
 }

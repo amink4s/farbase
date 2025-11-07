@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuickAuth } from "@coinbase/onchainkit/minikit";
 import Image from "next/image";
 
 interface ArticleEdit {
@@ -19,10 +18,14 @@ interface ArticleEdit {
 interface ApproveButtonProps {
   articleId: string;
   articleSlug: string;
+  authData: {
+    userFid: number;
+    isAdmin?: boolean;
+    isReviewer?: boolean;
+  };
 }
 
-export function ApproveButton({ articleSlug }: ApproveButtonProps) {
-  const { data: authData, error: authError } = useQuickAuth<{ userFid: number; isAdmin?: boolean; isReviewer?: boolean }>("/api/auth");
+export function ApproveButton({ articleSlug, authData }: ApproveButtonProps) {
   const [edits, setEdits] = useState<ArticleEdit[]>([]);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
@@ -30,24 +33,16 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
   // Only show for admins or reviewers
   const canApprove = authData?.isAdmin || authData?.isReviewer;
 
-  // Log auth error if present
-  useEffect(() => {
-    if (authError) {
-      console.error('[ApproveButton] Auth error:', authError);
-    }
-  }, [authError]);
-
   // Log auth state for debugging
   useEffect(() => {
-    console.log('[ApproveButton] Auth data updated:', {
+    console.log('[ApproveButton] Auth data received:', {
       authData,
-      authError,
       userFid: authData?.userFid,
       isAdmin: authData?.isAdmin,
       isReviewer: authData?.isReviewer,
       canApprove,
     });
-  }, [authData, authError, canApprove]);
+  }, [authData, canApprove]);
 
   useEffect(() => {
     async function fetchEditsWithAuthors() {
@@ -142,36 +137,22 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
     }
   };
 
-  console.log('[ApproveButton] Render check - authData:', !!authData, 'authError:', !!authError, 'loading:', loading, 'canApprove:', canApprove);
+  console.log('[ApproveButton] Render check - authData:', !!authData, 'loading:', loading, 'canApprove:', canApprove);
 
-  // Wait for auth data to load (but show button after 3 seconds if auth never loads - for testing/debugging)
-  if (!authData && !authError) {
-    console.log('[ApproveButton] Waiting for auth data...');
-    // For now, let's show the button anyway if there are pending edits
-    // This is a temporary workaround until we figure out why auth isn't loading
-    if (!loading && edits.length > 0) {
-      const pendingEdits = edits.filter(e => !e.approved);
-      if (pendingEdits.length > 0) {
-        console.warn('[ApproveButton] Auth not loaded but showing button anyway (debug mode)');
-        // Continue to render button below
-      } else {
-        return null;
-      }
-    } else {
-      return null;
-    }
+  // Auth data is required and passed as prop
+  if (!authData) {
+    console.log('[ApproveButton] No auth data provided');
+    return null;
   }
   
-  // Only show for admins or reviewers (skip check if we're in debug mode above)
-  if (authData && !canApprove) {
+  // Only show for admins or reviewers (this check is also done in parent, but double-check here)
+  if (!canApprove) {
     console.log('[ApproveButton] User cannot approve. isAdmin:', authData.isAdmin, 'isReviewer:', authData.isReviewer);
     return null;
   }
 
   if (authData) {
     console.log('[ApproveButton] User can approve. isAdmin:', authData.isAdmin, 'isReviewer:', authData.isReviewer);
-  } else {
-    console.warn('[ApproveButton] Showing button without auth check (debug mode)');
   }
 
   // Wait for edits to load
