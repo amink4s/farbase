@@ -3,7 +3,6 @@ import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import Link from "next/link";
 import Image from "next/image";
-import { notFound } from "next/navigation";
 import { LaunchButton } from "@/components/LaunchButton";
 
 // Use a loose prop signature to satisfy Next.js PageProps constraints in the app router
