@@ -21,11 +21,18 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
     setError(null);
 
     // Server will verify QuickAuth JWT and set `author_fid` from the token's `sub`.
-    const payload = { slug, title, body, category, metadata: {} as Record<string, unknown> };
+    const payload: {
+      slug: string;
+      title: string;
+      body: string;
+      category: string;
+      image_url?: string;
+      metadata: Record<string, unknown>;
+    } = { slug, title, body, category, metadata: {} as Record<string, unknown> };
     if (category === "token" && tokenAddress) payload.metadata.tokenAddress = tokenAddress;
     if (category === "token") payload.metadata.launcher = launcher;
     if (category === "article" && miniAppLink) payload.metadata.miniAppLink = miniAppLink;
-    if (imageUrl) payload.metadata.imageUrl = imageUrl;
+    if (imageUrl) payload.image_url = imageUrl;
     // persist category in metadata for server-side queries
     payload.metadata.category = category;
 

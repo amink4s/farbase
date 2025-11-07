@@ -16,7 +16,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
 
   try {
     // 1. Fetch article data from Supabase
-    const articleUrl = `${supabaseUrl}/rest/v1/articles?select=title,author_fid,metadata&slug=eq.${encodeURIComponent(
+    const articleUrl = `${supabaseUrl}/rest/v1/articles?select=title,author_fid,image_url&slug=eq.${encodeURIComponent(
       slug
     )}&limit=1`;
     const articleResponse = await fetch(articleUrl, {
@@ -38,9 +38,7 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
       return new Response(`Article not found`, { status: 404 });
     }
 
-
-    const { title, author_fid, metadata } = article;
-    const imageUrl = metadata?.imageUrl;
+    const { title, author_fid, image_url } = article;
 
     // 2. Fetch author data from Neynar
     const neynarResponse = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${author_fid}`, {
@@ -75,9 +73,9 @@ export async function GET(req: NextRequest, { params }: { params: { slug: string
             position: "relative",
           }}
         >
-          {imageUrl && (
+          {image_url && (
             <img
-              src={imageUrl}
+              src={image_url}
               alt=""
               style={{
                 position: "absolute",

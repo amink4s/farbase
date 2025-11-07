@@ -108,13 +108,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-  const { slug, title, body: content, metadata, category } = req.body ?? {};
-  
-  // Extract miniAppLink from metadata if present (for projects/articles)
-  const miniAppLink = metadata?.miniAppLink || null;
-
-    if (!slug || !title || !content) {
-      return res.status(400).json({ error: "Missing required fields: slug, title, body" });
+    // 1. Validate required fields
+    const { slug, title, body, metadata, image_url } = req.body;
+    if (!slug || !title || !body) {
+      return res.status(400).json({ error: "Missing required fields: slug, title, or body" });
     }
 
     // QuickAuth server-side verification
@@ -238,7 +235,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         Authorization: `Bearer ${SUPABASE_KEY}`,
         apikey: SUPABASE_KEY,
       },
-      body: JSON.stringify(insertPayload),
+      body: JSON.stringify({
+        slug,
+        title,
+        body,
+        author_fid,
+        neynar_score,
+        metadata,
+        image_url,
+      }),
     });
 
     if (!resp.ok) {
