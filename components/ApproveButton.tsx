@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuickAuth } from "@coinbase/onchainkit/minikit";
 import Image from "next/image";
 
 interface ArticleEdit {
