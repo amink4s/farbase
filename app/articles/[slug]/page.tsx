@@ -3,14 +3,16 @@ import ReactMarkdown from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import Link from "next/link";
 import Image from "next/image";
+import { notFound } from "next/navigation";
+import { LaunchButton } from "@/components/LaunchButton";
 
 // Use a loose prop signature to satisfy Next.js PageProps constraints in the app router
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export default async function ArticleViewPage(props: any) {
   const slug = props?.params?.slug ?? "";
 
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_KEY) {
@@ -151,30 +153,7 @@ export default async function ArticleViewPage(props: any) {
         
         {/* Launch button - shown if mini_app_link exists */}
         {article.mini_app_link && (
-          <a
-            href={article.mini_app_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '14px 24px',
-              background: 'var(--foreground)',
-              color: 'var(--background)',
-              textDecoration: 'none',
-              borderRadius: 8,
-              fontSize: 15,
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-              transition: 'opacity 0.2s',
-              marginTop: 4
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
-          >
-            🚀 Launch {article.title}
-          </a>
+          <LaunchButton href={article.mini_app_link} title={article.title} />
         )}
       </div>
 
