@@ -79,7 +79,7 @@ export function ArticleSearch() {
         <div className={styles.resultsDropdown}>
           {loading && <div className={styles.loadingItem}>Searching...</div>}
           {!loading && results.length === 0 && query.length > 1 && (
-            <div className={styles.noResultsItem}>No results found for '{query}'</div>
+            <div className={styles.noResultsItem}>{`No results found for "${query}"`}</div>
           )}
           {!loading && results.map((result) => (
             <Link key={result.slug} href={`/articles/${result.slug}`} className={styles.resultItem} onClick={() => setIsFocused(false)}>
