@@ -17,7 +17,7 @@ export default async function ArticleViewPage(props: any) {
     throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
   }
 
-  const url = `${SUPABASE_URL}/rest/v1/articles?select=*&slug=eq.${encodeURIComponent(slug)}&limit=1`;
+  const url = `${SUPABASE_URL}/rest/v1/articles?select=*,mini_app_link&slug=eq.${encodeURIComponent(slug)}&limit=1`;
   const resp = await fetch(url, {
     headers: {
       Authorization: `Bearer ${SUPABASE_KEY}`,
@@ -132,15 +132,51 @@ export default async function ArticleViewPage(props: any) {
         </div>
       )}
 
-      {/* Title */}
-      <h1 style={{ 
-        fontSize: 36,
-        fontWeight: 700,
-        marginBottom: 24,
-        lineHeight: 1.2,
+      {/* Title and Launch Button */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'flex-start',
+        gap: 20,
+        marginBottom: 24
       }}>
-        {article.title}
-      </h1>
+        <h1 style={{ 
+          fontSize: 36,
+          fontWeight: 700,
+          lineHeight: 1.2,
+          flex: 1,
+        }}>
+          {article.title}
+        </h1>
+        
+        {/* Launch button - shown if mini_app_link exists */}
+        {article.mini_app_link && (
+          <a
+            href={article.mini_app_link}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '14px 24px',
+              background: 'var(--foreground)',
+              color: 'var(--background)',
+              textDecoration: 'none',
+              borderRadius: 8,
+              fontSize: 15,
+              fontWeight: 600,
+              whiteSpace: 'nowrap',
+              transition: 'opacity 0.2s',
+              marginTop: 4
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+          >
+            🚀 Launch {article.title}
+          </a>
+        )}
+      </div>
 
       {/* Author info */}
       <div style={{ 
