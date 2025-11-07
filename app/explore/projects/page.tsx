@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import rehypeSanitize from 'rehype-sanitize';
+import Link from 'next/link';
 
 type ArticleItem = {
   slug: string;
@@ -32,7 +33,9 @@ export default async function Page() {
   const articles: ArticleItem[] = Array.isArray(rows) ? rows : [rows];
 
   return (
-    <main style={{ padding: 24 }}>
+    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+      <Link href="/" style={{ display: 'inline-block', padding: '10px 20px', background: 'var(--foreground)', color: 'var(--background)', textDecoration: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, marginBottom: 20 }}>← Home</Link>
+      <main style={{ marginTop: 16 }}>
       <h1 style={{ marginBottom: 8 }}>Projects</h1>
       {articles.length === 0 ? (
         <p>No project articles found.</p>
@@ -48,5 +51,6 @@ export default async function Page() {
         </div>
       )}
     </main>
+    </div>
   );
 }

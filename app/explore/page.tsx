@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 function IconProjects() {
   return (
@@ -46,8 +47,29 @@ export default function Page() {
   }
 
   return (
-    <main style={{ padding: 24 }}>
-      <h1 style={{ marginBottom: 8 }}>Explore</h1>
+    <main style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+      <Link 
+        href="/" 
+        style={{ 
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '10px 20px',
+          background: 'var(--foreground)',
+          color: 'var(--background)',
+          textDecoration: 'none',
+          borderRadius: 8,
+          fontSize: 15,
+          fontWeight: 600,
+          marginBottom: 20,
+          transition: 'opacity 0.2s'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+        onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+      >
+        ← Home
+      </Link>
+      <h1 style={{ marginBottom: 8, marginTop: 16, fontSize: 28, fontWeight: 700 }}>Explore</h1>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 20 }}>
         <a
