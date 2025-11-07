@@ -215,18 +215,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Create the article as visible but mark as not vetted. We keep articles public
     // per product decision — only awarding points after approval. The initial edit
     // proposal is created and must be approved to award contribution points.
-    const insertPayload = {
-      slug,
-      title,
-      body: content,
-      author_fid: authorFid,
-      metadata: { ...(metadata || {}), ...(category ? { category } : {}) },
-      published: true,
-      vetted: false,
-      neynar_score,
-      ...(miniAppLink ? { mini_app_link: miniAppLink } : {}),
-    };
-
     const resp = await fetch(`${SUPABASE_URL}/rest/v1/articles`, {
       method: "POST",
       headers: {
@@ -239,10 +227,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         slug,
         title,
         body,
-        author_fid,
+        author_fid: authorFid,
         neynar_score,
         metadata,
         image_url,
+        published: true,
+        vetted: false,
       }),
     });
 
@@ -261,7 +251,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const editPayload = {
         article_id: inserted.id,
         author_fid: authorFid,
-        body: content,
+        body: body,
         summary: null,
         approved: false,
       };

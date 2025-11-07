@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useMiniKit } from "@coinbase/onchainkit/minikit";
+import sdk from "@farcaster/miniapp-sdk";
 
 interface ShareButtonProps {
   articleUrl: string;
@@ -9,13 +9,19 @@ interface ShareButtonProps {
 }
 
 export function ShareButton({ articleUrl, articleTitle }: ShareButtonProps) {
-  const { share } = useMiniKit();
-
   const handleShare = () => {
-    share({
-      name: articleTitle,
-      url: articleUrl,
-    });
+    // The 'share' method might not be available, let's use a workaround
+    // by creating a cast intent URL and opening it.
+    const text = `Check out this article: ${articleTitle}`;
+    const embedUrl = articleUrl;
+    const castIntent = `https://warpcast.com/~/compose?text=${encodeURIComponent(
+      text
+    )}&embeds[]=${encodeURIComponent(embedUrl)}`;
+
+    // Since we are in a mini app, we should open the link externally.
+    if (typeof window !== "undefined") {
+      window.open(castIntent, "_blank");
+    }
   };
 
   return (
