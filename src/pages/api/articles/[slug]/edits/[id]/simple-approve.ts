@@ -2,7 +2,6 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
@@ -16,6 +15,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    return res.status(500).json({ error: "Server misconfiguration" });
   }
 
   const { slug, id } = req.query as { slug?: string; id?: string };
@@ -34,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         headers: { 
           Authorization: `Bearer ${SUPABASE_KEY}`, 
           apikey: SUPABASE_KEY 
-        },
+        } as Record<string, string>,
       }
     );
 
@@ -57,7 +60,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const artResp = await fetch(
       `${SUPABASE_URL}/rest/v1/articles?select=*&slug=eq.${encodeURIComponent(slug)}&limit=1`,
       {
-        headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY },
+        headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY } as Record<string, string> as Record<string, string>,
       }
     );
 
@@ -76,7 +79,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const editResp = await fetch(
       `${SUPABASE_URL}/rest/v1/article_edits?select=*&id=eq.${encodeURIComponent(id)}&limit=1`,
       {
-        headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY },
+        headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY } as Record<string, string> as Record<string, string>,
       }
     );
 
