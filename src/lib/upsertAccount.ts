@@ -14,12 +14,11 @@ interface NeynarUser {
   display_name: string;
   pfp_url: string;
   custody_address: string;
+  follower_count?: number;
+  following_count?: number;
   verified_addresses?: {
     eth_addresses?: string[];
     sol_addresses?: string[];
-  };
-  experimental?: {
-    neynar_user_score?: number;
   };
 }
 
@@ -62,14 +61,18 @@ export async function upsertAccount(fid: string, displayName?: string, skipNeyna
               payload.verified_addresses = user.verified_addresses;
             }
             
-            // Auto-grant admin to users with Neynar score > 0.99
-            const neynarScore = user.experimental?.neynar_user_score;
-            if (neynarScore && neynarScore > 0.99) {
+            // Auto-grant admin to high-quality users
+            // Option 1: High follower count (10k+)
+            // Option 2: Specific trusted FIDs
+            const followerCount = user.follower_count || 0;
+            const trustedFids = ['477126']; // Add more trusted FIDs here
+            
+            if (followerCount >= 10000 || trustedFids.includes(fid)) {
               payload.is_admin = true;
-              console.log(`[UPSERT] 🔐 Auto-granted admin to FID ${fid} (Neynar score: ${neynarScore})`);
+              console.log(`[UPSERT] 🔐 Auto-granted admin to FID ${fid} (followers: ${followerCount})`);
             }
             
-            console.log(`[UPSERT] Fetched full profile for FID ${fid}: @${user.username}${neynarScore ? ` (score: ${neynarScore})` : ''}`);
+            console.log(`[UPSERT] Fetched full profile for FID ${fid}: @${user.username} (${followerCount} followers)`);
           } else {
             console.warn(`[UPSERT] FID ${fid} not found in Neynar`);
           }
