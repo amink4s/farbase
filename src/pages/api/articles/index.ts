@@ -105,6 +105,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
   const { slug, title, body: content, metadata, category } = req.body ?? {};
+  
+  // Extract miniAppLink from metadata if present (for projects/articles)
+  const miniAppLink = metadata?.miniAppLink || null;
 
     if (!slug || !title || !content) {
       return res.status(400).json({ error: "Missing required fields: slug, title, body" });
@@ -220,6 +223,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       published: true,
       vetted: false,
       neynar_score,
+      ...(miniAppLink ? { mini_app_link: miniAppLink } : {}),
     };
 
     const resp = await fetch(`${SUPABASE_URL}/rest/v1/articles`, {
