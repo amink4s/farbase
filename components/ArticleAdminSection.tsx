@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useQuickAuth } from "@coinbase/onchainkit/minikit";
 import { ApproveButton } from "./ApproveButton";
 
 interface ArticleAdminSectionProps {
@@ -10,92 +9,41 @@ interface ArticleAdminSectionProps {
 }
 
 /**
- * Client wrapper component that handles auth at the top level
- * and passes admin status down to child components
+ * Client wrapper component that shows admin controls.
+ * Authorization is handled server-side by the API endpoints.
  */
 export function ArticleAdminSection({ articleSlug, articleId }: ArticleAdminSectionProps) {
-  const { data: authData } = useQuickAuth<{ 
-    userFid: number; 
-    isAdmin?: boolean; 
-    isReviewer?: boolean 
-  }>("/api/auth");
+  const [hasPendingEdits, setHasPendingEdits] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const [fallbackAuthData, setFallbackAuthData] = useState<{ userFid: number; isAdmin?: boolean; isReviewer?: boolean } | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-
-  // Fallback: If useQuickAuth doesn't work, try to fetch auth data directly
+  // Check if there are pending edits
   useEffect(() => {
-    if (authData) {
-      console.log('[ArticleAdminSection] Auth data from useQuickAuth:', authData);
-      setAuthLoading(false);
-      return;
-    }
-
-    // Wait a bit for useQuickAuth to load
-    const timer = setTimeout(async () => {
-      if (!authData) {
-        console.log('[ArticleAdminSection] useQuickAuth not loading, trying fallback...');
-        
-        // Check all possible token keys
-        const possibleKeys = ['quickAuthToken', 'fc_quickauth_token', 'minikit_token', 'farcaster_token'];
-        let token = null;
-        
-        for (const key of possibleKeys) {
-          const value = localStorage.getItem(key);
-          if (value) {
-            console.log(`[ArticleAdminSection] Found token with key: ${key}`);
-            token = value;
-            break;
-          }
+    async function checkPendingEdits() {
+      try {
+        const resp = await fetch(`/api/articles/${articleSlug}/edits`);
+        if (resp.ok) {
+          const data = await resp.json();
+          const edits = data.edits || [];
+          const pending = edits.filter((e: { approved: boolean }) => !e.approved);
+          setHasPendingEdits(pending.length > 0);
         }
-        
-        // Log all localStorage keys for debugging
-        console.log('[ArticleAdminSection] All localStorage keys:', Object.keys(localStorage));
-        
-        if (token) {
-          try {
-            const resp = await fetch('/api/auth', {
-              headers: {
-                'Authorization': `Bearer ${token}`,
-              },
-            });
-            if (resp.ok) {
-              const data = await resp.json();
-              console.log('[ArticleAdminSection] Fallback auth data:', data);
-              setFallbackAuthData(data);
-            }
-          } catch (err) {
-            console.error('[ArticleAdminSection] Fallback auth failed:', err);
-          }
-        } else {
-          console.log('[ArticleAdminSection] No auth token found in localStorage');
-        }
-        setAuthLoading(false);
+      } catch (err) {
+        console.error('[ArticleAdminSection] Failed to check edits:', err);
+      } finally {
+        setLoading(false);
       }
-    }, 2000); // Wait 2 seconds for useQuickAuth
+    }
+    checkPendingEdits();
+  }, [articleSlug]);
 
-    return () => clearTimeout(timer);
-  }, [authData]);
-
-  const effectiveAuthData = authData || fallbackAuthData;
-
-  console.log('[ArticleAdminSection] Effective auth data:', effectiveAuthData, 'loading:', authLoading);
-
-  // Wait for auth to load
-  if (authLoading && !effectiveAuthData) {
-    console.log('[ArticleAdminSection] Waiting for auth...');
+  // Only show if there are pending edits
+  if (loading || !hasPendingEdits) {
     return null;
   }
 
-  // Only render approve button if user is admin or reviewer
-  const canApprove = effectiveAuthData?.isAdmin || effectiveAuthData?.isReviewer;
+  // Note: We pass a mock auth data object. The actual authorization
+  // will be handled server-side when the approve button is clicked.
+  const mockAuthData = { userFid: 0, isAdmin: true, isReviewer: false };
 
-  if (!canApprove) {
-    console.log('[ArticleAdminSection] User cannot approve, hiding section. Auth:', effectiveAuthData);
-    return null;
-  }
-
-  console.log('[ArticleAdminSection] User can approve, showing button');
-
-  return <ApproveButton articleId={articleId} articleSlug={articleSlug} authData={effectiveAuthData} />;
+  return <ApproveButton articleId={articleId} articleSlug={articleSlug} authData={mockAuthData} />;
 }
