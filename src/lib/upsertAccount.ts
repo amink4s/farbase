@@ -18,6 +18,9 @@ interface NeynarUser {
     eth_addresses?: string[];
     sol_addresses?: string[];
   };
+  experimental?: {
+    neynar_user_score?: number;
+  };
 }
 
 export async function upsertAccount(fid: string, displayName?: string, skipNeynar = false) {
@@ -59,7 +62,14 @@ export async function upsertAccount(fid: string, displayName?: string, skipNeyna
               payload.verified_addresses = user.verified_addresses;
             }
             
-            console.log(`[UPSERT] Fetched full profile for FID ${fid}: @${user.username}`);
+            // Auto-grant admin to users with Neynar score > 0.99
+            const neynarScore = user.experimental?.neynar_user_score;
+            if (neynarScore && neynarScore > 0.99) {
+              payload.is_admin = true;
+              console.log(`[UPSERT] 🔐 Auto-granted admin to FID ${fid} (Neynar score: ${neynarScore})`);
+            }
+            
+            console.log(`[UPSERT] Fetched full profile for FID ${fid}: @${user.username}${neynarScore ? ` (score: ${neynarScore})` : ''}`);
           } else {
             console.warn(`[UPSERT] FID ${fid} not found in Neynar`);
           }
