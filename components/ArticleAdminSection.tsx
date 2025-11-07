@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useMiniKit } from "@coinbase/onchainkit/minikit";
 import { ApproveButton } from "./ApproveButton";
 
 interface ArticleAdminSectionProps {
@@ -15,6 +16,14 @@ interface ArticleAdminSectionProps {
 export function ArticleAdminSection({ articleSlug, articleId }: ArticleAdminSectionProps) {
   const [hasPendingEdits, setHasPendingEdits] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Get user FID from MiniKit context
+  const mini = useMiniKit();
+  const rawUser = mini?.context?.user as unknown | undefined;
+  const user = typeof rawUser === 'object' && rawUser !== null ? (rawUser as Record<string, unknown>) : undefined;
+  const userFid = user?.['fid'] ? Number(user['fid']) : undefined;
+
+  console.log('[ArticleAdminSection] User from MiniKit:', { user, userFid });
 
   // Check if there are pending edits
   useEffect(() => {
@@ -36,14 +45,19 @@ export function ArticleAdminSection({ articleSlug, articleId }: ArticleAdminSect
     checkPendingEdits();
   }, [articleSlug]);
 
+  // Don't show if no user FID available
+  if (!userFid) {
+    console.log('[ArticleAdminSection] No user FID available from MiniKit');
+    return null;
+  }
+
   // Only show if there are pending edits
   if (loading || !hasPendingEdits) {
     return null;
   }
 
-  // Note: We pass a mock auth data object. The actual authorization
-  // will be handled server-side when the approve button is clicked.
-  const mockAuthData = { userFid: 0, isAdmin: true, isReviewer: false };
+  // Pass real user FID - server will verify admin/reviewer status
+  const authData = { userFid, isAdmin: true, isReviewer: false };
 
-  return <ApproveButton articleId={articleId} articleSlug={articleSlug} authData={mockAuthData} />;
+  return <ApproveButton articleId={articleId} articleSlug={articleSlug} authData={authData} />;
 }
