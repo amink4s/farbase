@@ -29,12 +29,17 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          a: ({ node, ...props }) => <a className={styles.link} {...props} />,
-          p: ({ node, ...props }) => <p className={styles.paragraph} {...props} />,
-          // Custom handling for @mentions
-          text: ({ node, ...props }) => {
+          h1: ({ node: _node, ...props }) => <h1 className={styles.h1} {...props} />,
+          h2: ({ node: _node, ...props }) => <h2 className={styles.h2} {...props} />,
+          h3: ({ node: _node, ...props }) => <h3 className={styles.h3} {...props} />,
+          p: ({ node: _node, ...props }) => <p className={styles.p} {...props} />,
+          a: ({ node: _node, ...props }) => <a className={styles.a} {...props} />,
+          ul: ({ node: _node, ...props }) => <ul className={styles.ul} {...props} />,
+          li: ({ node: _node, ...props }) => <li className={styles.li} {...props} />,
+          code: ({ node: _node, ...props }) => <code className={styles.code} {...props} />,
+          text: ({ node: _node, ...props }) => {
             const text = props.children as string;
-            const mentionRegex = /(@[a-zA-Z0-9_.-]+)/g;
+            const mentionRegex = /@(\w+)/g;
             const parts = text.split(mentionRegex);
 
             return (
@@ -43,7 +48,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
                   mentionRegex.test(part) ? (
                     <Mention key={i}>{part}</Mention>
                   ) : (
-                    <React.Fragment key={i}>{part}</React.Fragment>
+                    part
                   )
                 )}
               </>
