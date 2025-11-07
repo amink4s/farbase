@@ -112,47 +112,31 @@ export function ApproveButton({ articleSlug, authData }: ApproveButtonProps) {
   const handleApprove = async (editId: string) => {
     console.log('[ApproveButton] Approve clicked for edit:', editId);
     
+    if (!authData?.userFid) {
+      alert("User FID not available. Please refresh and try again.");
+      return;
+    }
+    
     setApproving(true);
     try {
-      // The token is managed by MiniKit/QuickAuth SDK internally
-      // We need to make the request through a method that includes auth headers
-      // Check if window.ethereum or minikit context has the token
-      console.log('[ApproveButton] Checking for auth context...');
-      console.log('[ApproveButton] localStorage keys:', Object.keys(localStorage));
+      console.log(`[ApproveButton] Calling simple-approve API with FID ${authData.userFid}...`);
       
-      // Try all possible localStorage token locations
-      let token = null;
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.includes('auth') || key.includes('token') || key.includes('jwt'))) {
-          const value = localStorage.getItem(key);
-          console.log(`[ApproveButton] Found potential token at key: ${key}, length: ${value?.length}`);
-          if (value && value.length > 20) {  // JWT tokens are long
-            token = value;
-            break;
-          }
-        }
-      }
-      
-      if (!token) {
-        console.error('[ApproveButton] No authentication token found');
-        alert("Authentication token not found. This feature requires authentication through the Farcaster app.");
-        setApproving(false);
-        return;
-      }
-      
-      console.log('[ApproveButton] Using token, calling approve API...');
-      const resp = await fetch(`/api/articles/${articleSlug}/edits/${editId}/approve`, {
+      const resp = await fetch(`/api/articles/${articleSlug}/edits/${editId}/simple-approve`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
+        body: JSON.stringify({
+          approverFid: String(authData.userFid),
+        }),
       });
 
       console.log('[ApproveButton] API response:', resp.status, resp.ok);
 
       if (resp.ok) {
-        alert("Edit approved! Points awarded.");
+        const data = await resp.json();
+        console.log('[ApproveButton] Success:', data);
+        alert(`Edit approved! Author: +${data.authorPoints} points, You: +${data.approverPoints} points`);
         window.location.reload();
       } else {
         const error = await resp.json();
@@ -161,7 +145,7 @@ export function ApproveButton({ articleSlug, authData }: ApproveButtonProps) {
       }
     } catch (err) {
       console.error("[ApproveButton] Failed to approve edit:", err);
-      alert("Failed to approve edit");
+      alert(`Failed to approve edit: ${err}`);
     } finally {
       setApproving(false);
     }
