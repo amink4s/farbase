@@ -12,6 +12,7 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [tokenAddress, setTokenAddress] = useState("");
     const [launcher, setLauncher] = useState<"clanker" | "zora" | "other">("clanker");
+  const [miniAppLink, setMiniAppLink] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,6 +23,7 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
   const payload = { slug, title, body, category, metadata: {} as Record<string, unknown> };
   if (category === "token" && tokenAddress) payload.metadata.tokenAddress = tokenAddress;
       if (category === "token") payload.metadata.launcher = launcher;
+  if (category === "article" && miniAppLink) payload.metadata.miniAppLink = miniAppLink;
   // persist category in metadata for server-side queries
   payload.metadata.category = category;
 
@@ -228,6 +230,29 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
               }}
             />
           </div>
+
+          {category === "article" && (
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: 'var(--foreground)' }}>
+                Mini App Link <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(optional)</span>
+              </label>
+              <input
+                value={miniAppLink}
+                onChange={(e) => setMiniAppLink(e.target.value)}
+                placeholder="https://..."
+                type="url"
+                style={{ 
+                  width: "100%", 
+                  padding: '12px 16px',
+                  background: 'var(--input-bg)',
+                  border: '1px solid var(--input-border)',
+                  borderRadius: 8,
+                  fontSize: 15,
+                  color: 'var(--foreground)'
+                }}
+              />
+            </div>
+          )}
 
           {category === "token" && (
               <>

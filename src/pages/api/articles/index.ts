@@ -64,15 +64,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (req.method === "GET") {
     try {
       const q = (req.query.search as string) || "";
-      // Minimal safety: if no query, return empty array (or you may return recent articles)
-      if (!q) {
+      const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : null;
+      
+      let url;
+      if (!q && !limit) {
         return res.status(200).json({ articles: [] });
+      } else if (!q && limit) {
+        // Fetch recent articles
+        url = `${SUPABASE_URL}/rest/v1/articles?select=slug,title,metadata,created_at,author_fid&order=created_at.desc&limit=${limit}`;
+      } else {
+        // Build Supabase REST filter: search in title, body, or slug (case-insensitive)
+        const encoded = encodeURIComponent(`(title.ilike.*${q}*,body.ilike.*${q}*,slug.ilike.*${q}*)`);
+        url = `${SUPABASE_URL}/rest/v1/articles?select=slug,title,metadata,created_at,author_fid&or=${encoded}&limit=50`;
       }
-
-      // Build Supabase REST filter: search in title, body, or slug (case-insensitive)
-      // Use the `or` parameter with ilike filters: or=(title.ilike.*q*,body.ilike.*q*,slug.ilike.*q*)
-      const encoded = encodeURIComponent(`(title.ilike.*${q}*,body.ilike.*${q}*,slug.ilike.*${q}*)`);
-      const url = `${SUPABASE_URL}/rest/v1/articles?select=slug,title,metadata,created_at&or=${encoded}&limit=50`;
 
       const resp = await fetch(url, {
         headers: {
