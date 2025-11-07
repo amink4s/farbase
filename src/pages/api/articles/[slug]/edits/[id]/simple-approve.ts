@@ -122,7 +122,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(502).json({ error: "Failed to approve edit" });
     }
 
-    // Update article body
+    // Update article body and mark as vetted
     const updateResp = await fetch(
       `${SUPABASE_URL}/rest/v1/articles?id=eq.${encodeURIComponent(article.id)}`,
       {
@@ -131,8 +131,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           Authorization: `Bearer ${SUPABASE_KEY}`,
           apikey: SUPABASE_KEY,
           "Content-Type": "application/json",
+          Prefer: "return=representation",
         },
-        body: JSON.stringify({ body: edit.body }),
+        body: JSON.stringify({ body: edit.body, vetted: true }),
       }
     );
 
@@ -145,70 +146,101 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const approverPoints = 100;
 
     // Insert author contribution
-    await fetch(`${SUPABASE_URL}/rest/v1/contributions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-        apikey: SUPABASE_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        fid: edit.author_fid,
-        source_type: "edit",
-        source_id: edit.id,
-        points: authorPoints,
-      }),
-    });
-
-    // Insert approver contribution
-    await fetch(`${SUPABASE_URL}/rest/v1/contributions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${SUPABASE_KEY}`,
-        apikey: SUPABASE_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        fid: approverFid,
-        source_type: "review",
-        source_id: edit.id,
-        points: approverPoints,
-      }),
-    });
-
-    // Update user_points for author
-    const authorPointsResp = await fetch(
-      `${SUPABASE_URL}/rest/v1/user_points?fid=eq.${encodeURIComponent(edit.author_fid)}`,
-      {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${SUPABASE_KEY}`,
-          apikey: SUPABASE_KEY,
-          "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates",
-        },
-        body: JSON.stringify({
-          fid: edit.author_fid,
-          total_points: authorPoints,
-        }),
-      }
-    );
-
-    if (!authorPointsResp.ok) {
-      // Try insert instead
-      await fetch(`${SUPABASE_URL}/rest/v1/user_points`, {
+    {
+      const contribResp = await fetch(`${SUPABASE_URL}/rest/v1/contributions`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${SUPABASE_KEY}`,
           apikey: SUPABASE_KEY,
           "Content-Type": "application/json",
+          Prefer: "return=representation",
         },
         body: JSON.stringify({
           fid: edit.author_fid,
-          total_points: authorPoints,
+          source_type: "edit",
+          source_id: edit.id,
+          points: authorPoints,
+          reason: "approved_edit",
         }),
       });
+      if (!contribResp.ok) {
+        console.warn(`[SIMPLE-APPROVE] Failed to insert author contribution: HTTP ${contribResp.status} ${await contribResp.text()}`);
+      }
     }
+
+    // Insert approver contribution
+    {
+      const approverContribResp = await fetch(`${SUPABASE_URL}/rest/v1/contributions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          apikey: SUPABASE_KEY,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+        },
+        body: JSON.stringify({
+          fid: approverFid,
+          source_type: "review",
+          source_id: edit.id,
+          points: approverPoints,
+          reason: "approved_edit",
+        }),
+      });
+      if (!approverContribResp.ok) {
+        console.warn(`[SIMPLE-APPROVE] Failed to insert approver contribution: HTTP ${approverContribResp.status} ${await approverContribResp.text()}`);
+      }
+    }
+
+    // Helper to increment user_points safely
+    async function incrementUserPoints(fid: string, delta: number) {
+      // Read existing total
+      const getResp = await fetch(
+        `${SUPABASE_URL}/rest/v1/user_points?select=fid,total_points&fid=eq.${encodeURIComponent(fid)}&limit=1`,
+        { headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY } as Record<string, string> }
+      );
+      if (!getResp.ok) {
+        console.warn(`[SIMPLE-APPROVE] Failed to read user_points for ${fid}: HTTP ${getResp.status} ${await getResp.text()}`);
+        return;
+      }
+      const rows = await getResp.json();
+      const existing = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+      const current = Number(existing?.total_points ?? 0) || 0;
+      const newTotal = current + delta;
+
+      if (existing) {
+        const patchResp = await fetch(`${SUPABASE_URL}/rest/v1/user_points?fid=eq.${encodeURIComponent(fid)}` , {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            apikey: SUPABASE_KEY,
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          } as Record<string, string>,
+          body: JSON.stringify({ total_points: newTotal, last_updated: new Date().toISOString() }),
+        });
+        if (!patchResp.ok) {
+          console.warn(`[SIMPLE-APPROVE] Failed to patch user_points for ${fid}: HTTP ${patchResp.status} ${await patchResp.text()}`);
+        }
+      } else {
+        const insertResp = await fetch(`${SUPABASE_URL}/rest/v1/user_points`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            apikey: SUPABASE_KEY,
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          } as Record<string, string>,
+          body: JSON.stringify({ fid, total_points: newTotal }),
+        });
+        if (!insertResp.ok) {
+          console.warn(`[SIMPLE-APPROVE] Failed to insert user_points for ${fid}: HTTP ${insertResp.status} ${await insertResp.text()}`);
+        }
+      }
+    }
+
+    // Update user_points for author and approver
+    await incrementUserPoints(String(edit.author_fid), authorPoints);
+    await incrementUserPoints(String(approverFid), approverPoints);
 
     // Update user_points for approver
     const approverPointsResp = await fetch(
