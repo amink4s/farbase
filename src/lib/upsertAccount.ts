@@ -86,7 +86,7 @@ export async function upsertAccount(fid: string, displayName?: string, skipNeyna
             // Requirements (ALL must be met):
             // 1. Must have active_status "active:2" (unlikely to spam - Farcaster spam label 2)
             // 2. Must have Neynar score > 0.99
-            // 3. Either: 100k+ followers OR trusted FID
+            // 3. OR be in trusted FID list
             const followerCount = user.follower_count || 0;
             const trustedFids = ['477126']; // Add more trusted FIDs here
             const activeStatus = user.active_status || '';
@@ -94,18 +94,16 @@ export async function upsertAccount(fid: string, displayName?: string, skipNeyna
             // Check if user has spam label 2 (unlikely to spam)
             const hasGoodSpamLabel = activeStatus === 'active:2';
             const hasHighScore = neynarScore > 0.99;
-            const hasHighFollowers = followerCount >= 100000;
             const isTrustedFid = trustedFids.includes(fid);
             
-            if (hasGoodSpamLabel && hasHighScore && (hasHighFollowers || isTrustedFid)) {
+            if ((hasGoodSpamLabel && hasHighScore) || isTrustedFid) {
               payload.is_admin = true;
               console.log(`[UPSERT] 🔐 Auto-granted admin to FID ${fid} (followers: ${followerCount}, spam: ${activeStatus}, score: ${neynarScore})`);
             } else {
               const reasons = [];
               if (!hasGoodSpamLabel) reasons.push(`spam label: ${activeStatus}`);
               if (!hasHighScore) reasons.push(`score: ${neynarScore}`);
-              if (!hasHighFollowers && !isTrustedFid) reasons.push(`followers: ${followerCount}`);
-              if (reasons.length > 0) {
+              if (reasons.length > 0 && !isTrustedFid) {
                 console.log(`[UPSERT] ⚠️ FID ${fid} not granted admin - Failed: ${reasons.join(', ')}`);
               }
             }
