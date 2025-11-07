@@ -30,6 +30,17 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
   // Only show for admins or reviewers
   const canApprove = authData?.isAdmin || authData?.isReviewer;
 
+  // Log auth state for debugging
+  useEffect(() => {
+    console.log('[ApproveButton] Auth data updated:', {
+      authData,
+      userFid: authData?.userFid,
+      isAdmin: authData?.isAdmin,
+      isReviewer: authData?.isReviewer,
+      canApprove,
+    });
+  }, [authData, canApprove]);
+
   useEffect(() => {
     async function fetchEditsWithAuthors() {
       try {
@@ -123,8 +134,13 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
     }
   };
 
+  console.log('[ApproveButton] Render check - authData:', !!authData, 'loading:', loading, 'canApprove:', canApprove);
+
   // Wait for auth data to load
-  if (!authData) return null;
+  if (!authData) {
+    console.log('[ApproveButton] Waiting for auth data...');
+    return null;
+  }
   
   // Only show for admins or reviewers
   if (!canApprove) {
@@ -146,7 +162,10 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
   const pendingEdits = edits.filter(e => !e.approved);
   console.log('[ApproveButton] Pending edits:', pendingEdits.length);
   
-  if (pendingEdits.length === 0) return null;
+  if (pendingEdits.length === 0) {
+    console.log('[ApproveButton] No pending edits, hiding button');
+    return null;
+  }
 
   return (
     <div style={{
