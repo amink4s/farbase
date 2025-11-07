@@ -35,6 +35,8 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
       try {
         console.log('[ApproveButton] Fetching edits for slug:', articleSlug);
         const resp = await fetch(`/api/articles/${articleSlug}/edits`);
+        console.log('[ApproveButton] Fetch response status:', resp.status, resp.ok);
+        
         if (resp.ok) {
           const data = await resp.json();
           const editsData = data.edits || [];
@@ -44,14 +46,19 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
           const editsWithAuthors = await Promise.all(
             editsData.map(async (edit: ArticleEdit) => {
               try {
+                const apiKey = process.env.NEXT_PUBLIC_NEYNAR_API_KEY;
+                console.log('[ApproveButton] Neynar API key present:', !!apiKey);
+                
                 const neynarResp = await fetch(
                   `https://api.neynar.com/v2/farcaster/user/bulk?fids=${edit.author_fid}`,
                   {
                     headers: {
-                      api_key: process.env.NEXT_PUBLIC_NEYNAR_API_KEY || "",
+                      api_key: apiKey || "",
                     },
                   }
                 );
+                console.log('[ApproveButton] Neynar response for FID', edit.author_fid, ':', neynarResp.status);
+                
                 if (neynarResp.ok) {
                   const neynarData = await neynarResp.json();
                   const user = neynarData.users?.[0];
@@ -65,7 +72,7 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
                   }
                 }
               } catch (err) {
-                console.warn("Failed to fetch author:", err);
+                console.warn("[ApproveButton] Failed to fetch author:", err);
               }
               return edit;
             })
@@ -73,10 +80,15 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
           
           console.log('[ApproveButton] Edits with authors:', editsWithAuthors);
           setEdits(editsWithAuthors);
+        } else {
+          console.error('[ApproveButton] Failed to fetch edits, status:', resp.status);
+          const errorText = await resp.text();
+          console.error('[ApproveButton] Error response:', errorText);
         }
       } catch (err) {
-        console.error("Failed to fetch edits:", err);
+        console.error("[ApproveButton] Failed to fetch edits:", err);
       } finally {
+        console.log('[ApproveButton] Finished loading, setting loading=false');
         setLoading(false);
       }
     }
