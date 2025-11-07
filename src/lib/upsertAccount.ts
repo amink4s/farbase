@@ -16,6 +16,7 @@ interface NeynarUser {
   custody_address: string;
   follower_count?: number;
   following_count?: number;
+  active_status?: string;
   verified_addresses?: {
     eth_addresses?: string[];
     sol_addresses?: string[];
@@ -61,18 +62,25 @@ export async function upsertAccount(fid: string, displayName?: string, skipNeyna
               payload.verified_addresses = user.verified_addresses;
             }
             
-            // Auto-grant admin to high-quality users
-            // Option 1: High follower count (10k+)
-            // Option 2: Specific trusted FIDs
+            // Auto-grant admin to high-quality users with strict spam filtering
+            // Requirements:
+            // 1. Must have active_status "active:2" (unlikely to spam - Farcaster spam label 2)
+            // 2. Either: 100k+ followers OR trusted FID
             const followerCount = user.follower_count || 0;
             const trustedFids = ['477126']; // Add more trusted FIDs here
+            const activeStatus = user.active_status || '';
             
-            if (followerCount >= 10000 || trustedFids.includes(fid)) {
+            // Check if user has spam label 2 (unlikely to spam)
+            const hasGoodSpamLabel = activeStatus === 'active:2';
+            
+            if (hasGoodSpamLabel && (followerCount >= 100000 || trustedFids.includes(fid))) {
               payload.is_admin = true;
-              console.log(`[UPSERT] 🔐 Auto-granted admin to FID ${fid} (followers: ${followerCount})`);
+              console.log(`[UPSERT] 🔐 Auto-granted admin to FID ${fid} (followers: ${followerCount}, spam label: ${activeStatus})`);
+            } else if (!hasGoodSpamLabel && followerCount >= 100000) {
+              console.log(`[UPSERT] ⚠️ FID ${fid} has high followers (${followerCount}) but spam label is ${activeStatus}, not granting admin`);
             }
             
-            console.log(`[UPSERT] Fetched full profile for FID ${fid}: @${user.username} (${followerCount} followers)`);
+            console.log(`[UPSERT] Fetched full profile for FID ${fid}: @${user.username} (${followerCount} followers, spam: ${activeStatus})`);
           } else {
             console.warn(`[UPSERT] FID ${fid} not found in Neynar`);
           }
