@@ -110,16 +110,32 @@ export function ApproveButton({ articleSlug, authData }: ApproveButtonProps) {
   }, [articleSlug]);
 
   const handleApprove = async (editId: string) => {
-    if (!authData?.userFid) return;
+    console.log('[ApproveButton] Approve clicked for edit:', editId);
     
     setApproving(true);
     try {
+      // Try to get token from localStorage - check common key names
+      const token = localStorage.getItem("quickAuthToken") 
+        || localStorage.getItem("fc_quickauth_token")
+        || localStorage.getItem("minikit_token");
+      
+      console.log('[ApproveButton] Token found:', !!token);
+      
+      if (!token) {
+        alert("Authentication token not found. Please refresh the page and try again.");
+        setApproving(false);
+        return;
+      }
+      
+      console.log('[ApproveButton] Calling approve API...');
       const resp = await fetch(`/api/articles/${articleSlug}/edits/${editId}/approve`, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${localStorage.getItem("quickAuthToken")}`,
+          "Authorization": `Bearer ${token}`,
         },
       });
+
+      console.log('[ApproveButton] API response:', resp.status, resp.ok);
 
       if (resp.ok) {
         alert("Edit approved! Points awarded.");
@@ -127,10 +143,11 @@ export function ApproveButton({ articleSlug, authData }: ApproveButtonProps) {
         window.location.reload();
       } else {
         const error = await resp.json();
+        console.error('[ApproveButton] API error:', error);
         alert(`Failed to approve: ${error.error || "Unknown error"}`);
       }
     } catch (err) {
-      console.error("Failed to approve edit:", err);
+      console.error("[ApproveButton] Failed to approve edit:", err);
       alert("Failed to approve edit");
     } finally {
       setApproving(false);

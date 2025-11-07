@@ -8,6 +8,18 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '**.neynar.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'imagedelivery.net',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.imgur.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.imgur.com',
+      },
     ],
   },
   webpack: (config) => {
