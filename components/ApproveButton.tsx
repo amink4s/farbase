@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useQuickAuth } from "@coinbase/onchainkit/minikit";
 import Image from "next/image";
 
 interface ArticleEdit {
@@ -114,20 +115,34 @@ export function ApproveButton({ articleSlug, authData }: ApproveButtonProps) {
     
     setApproving(true);
     try {
-      // Try to get token from localStorage - check common key names
-      const token = localStorage.getItem("quickAuthToken") 
-        || localStorage.getItem("fc_quickauth_token")
-        || localStorage.getItem("minikit_token");
+      // The token is managed by MiniKit/QuickAuth SDK internally
+      // We need to make the request through a method that includes auth headers
+      // Check if window.ethereum or minikit context has the token
+      console.log('[ApproveButton] Checking for auth context...');
+      console.log('[ApproveButton] localStorage keys:', Object.keys(localStorage));
       
-      console.log('[ApproveButton] Token found:', !!token);
+      // Try all possible localStorage token locations
+      let token = null;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.includes('auth') || key.includes('token') || key.includes('jwt'))) {
+          const value = localStorage.getItem(key);
+          console.log(`[ApproveButton] Found potential token at key: ${key}, length: ${value?.length}`);
+          if (value && value.length > 20) {  // JWT tokens are long
+            token = value;
+            break;
+          }
+        }
+      }
       
       if (!token) {
-        alert("Authentication token not found. Please refresh the page and try again.");
+        console.error('[ApproveButton] No authentication token found');
+        alert("Authentication token not found. This feature requires authentication through the Farcaster app.");
         setApproving(false);
         return;
       }
       
-      console.log('[ApproveButton] Calling approve API...');
+      console.log('[ApproveButton] Using token, calling approve API...');
       const resp = await fetch(`/api/articles/${articleSlug}/edits/${editId}/approve`, {
         method: "POST",
         headers: {
@@ -139,7 +154,6 @@ export function ApproveButton({ articleSlug, authData }: ApproveButtonProps) {
 
       if (resp.ok) {
         alert("Edit approved! Points awarded.");
-        // Refresh the page to show updated content
         window.location.reload();
       } else {
         const error = await resp.json();
