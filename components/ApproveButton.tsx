@@ -33,10 +33,12 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
   useEffect(() => {
     async function fetchEditsWithAuthors() {
       try {
+        console.log('[ApproveButton] Fetching edits for slug:', articleSlug);
         const resp = await fetch(`/api/articles/${articleSlug}/edits`);
         if (resp.ok) {
           const data = await resp.json();
           const editsData = data.edits || [];
+          console.log('[ApproveButton] Received edits:', editsData.length, editsData);
           
           // Fetch author info for each edit
           const editsWithAuthors = await Promise.all(
@@ -69,6 +71,7 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
             })
           );
           
+          console.log('[ApproveButton] Edits with authors:', editsWithAuthors);
           setEdits(editsWithAuthors);
         }
       } catch (err) {
@@ -108,9 +111,29 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
     }
   };
 
-  if (loading || edits.length === 0 || !canApprove) return null;
+  // Wait for auth data to load
+  if (!authData) return null;
+  
+  // Only show for admins or reviewers
+  if (!canApprove) {
+    console.log('[ApproveButton] User cannot approve. isAdmin:', authData.isAdmin, 'isReviewer:', authData.isReviewer);
+    return null;
+  }
 
+  console.log('[ApproveButton] User can approve. isAdmin:', authData.isAdmin, 'isReviewer:', authData.isReviewer);
+
+  // Wait for edits to load
+  if (loading) {
+    console.log('[ApproveButton] Still loading edits...');
+    return null;
+  }
+
+  console.log('[ApproveButton] All edits:', edits.length);
+
+  // Filter to pending edits only
   const pendingEdits = edits.filter(e => !e.approved);
+  console.log('[ApproveButton] Pending edits:', pendingEdits.length);
+  
   if (pendingEdits.length === 0) return null;
 
   return (
