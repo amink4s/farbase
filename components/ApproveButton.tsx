@@ -29,6 +29,8 @@ export function ApproveButton({ articleSlug, authData }: ApproveButtonProps) {
   const [edits, setEdits] = useState<ArticleEdit[]>([]);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Only show for admins or reviewers
   const canApprove = authData?.isAdmin || authData?.isReviewer;
@@ -113,11 +115,13 @@ export function ApproveButton({ articleSlug, authData }: ApproveButtonProps) {
     console.log('[ApproveButton] Approve clicked for edit:', editId);
     
     if (!authData?.userFid) {
-      alert("User FID not available. Please refresh and try again.");
+      setError("User FID not available. Please refresh and try again.");
       return;
     }
     
     setApproving(true);
+    setError(null);
+    setMessage(null);
     try {
       console.log(`[ApproveButton] Calling simple-approve API with FID ${authData.userFid}...`);
       
@@ -136,16 +140,17 @@ export function ApproveButton({ articleSlug, authData }: ApproveButtonProps) {
       if (resp.ok) {
         const data = await resp.json();
         console.log('[ApproveButton] Success:', data);
-        alert(`Edit approved! Author: +${data.authorPoints} points, You: +${data.approverPoints} points`);
-        window.location.reload();
+        setMessage(`Approved. Author +${data.authorPoints}, You +${data.approverPoints}.`);
+        // Refresh after a short delay so the UI picks up vetted/body changes
+        setTimeout(() => window.location.reload(), 600);
       } else {
         const error = await resp.json();
         console.error('[ApproveButton] API error:', error);
-        alert(`Failed to approve: ${error.error || "Unknown error"}`);
+        setError(error.error || "Failed to approve");
       }
     } catch (err) {
       console.error("[ApproveButton] Failed to approve edit:", err);
-      alert(`Failed to approve edit: ${err}`);
+      setError(`Failed to approve edit: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setApproving(false);
     }
@@ -197,6 +202,8 @@ export function ApproveButton({ articleSlug, authData }: ApproveButtonProps) {
       <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12 }}>
         ⚠️ Pending Edits ({pendingEdits.length})
       </h3>
+      {message && <div style={{ color: 'green', marginBottom: 12, background: 'rgba(34, 197, 94, 0.1)', padding: 8, borderRadius: 4 }}>{message}</div>}
+      {error && <div style={{ color: 'red', marginBottom: 12, background: 'rgba(239, 68, 68, 0.1)', padding: 8, borderRadius: 4 }}>Error: {error}</div>}
       {pendingEdits.map(edit => (
         <div key={edit.id} style={{
           padding: 16,
