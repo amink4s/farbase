@@ -35,7 +35,23 @@ export function ArticleAdminSection({ articleSlug, articleId }: ArticleAdminSect
     const timer = setTimeout(async () => {
       if (!authData) {
         console.log('[ArticleAdminSection] useQuickAuth not loading, trying fallback...');
-        const token = localStorage.getItem('quickAuthToken');
+        
+        // Check all possible token keys
+        const possibleKeys = ['quickAuthToken', 'fc_quickauth_token', 'minikit_token', 'farcaster_token'];
+        let token = null;
+        
+        for (const key of possibleKeys) {
+          const value = localStorage.getItem(key);
+          if (value) {
+            console.log(`[ArticleAdminSection] Found token with key: ${key}`);
+            token = value;
+            break;
+          }
+        }
+        
+        // Log all localStorage keys for debugging
+        console.log('[ArticleAdminSection] All localStorage keys:', Object.keys(localStorage));
+        
         if (token) {
           try {
             const resp = await fetch('/api/auth', {
@@ -51,6 +67,8 @@ export function ArticleAdminSection({ articleSlug, articleId }: ArticleAdminSect
           } catch (err) {
             console.error('[ArticleAdminSection] Fallback auth failed:', err);
           }
+        } else {
+          console.log('[ArticleAdminSection] No auth token found in localStorage');
         }
         setAuthLoading(false);
       }
