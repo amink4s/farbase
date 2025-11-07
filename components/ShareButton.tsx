@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import sdk from "@farcaster/miniapp-sdk";
 
 interface ShareButtonProps {
   articleUrl: string;

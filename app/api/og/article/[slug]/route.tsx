@@ -11,8 +11,11 @@ if (!supabaseUrl) throw new Error("SUPABASE_URL is not set.");
 if (!supabaseServiceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set.");
 if (!neynarApiKey) throw new Error("NEYNAR_API_KEY is not set.");
 
-export async function GET(req: NextRequest, { params }: { params: { slug: string } }) {
-  const { slug } = params;
+export async function GET(req: NextRequest) {
+  // The app route handler receives a Request; extract the slug from the URL path.
+  const url = new URL(req.url);
+  const parts = url.pathname.split("/").filter(Boolean);
+  const slug = decodeURIComponent(parts[parts.length - 1] || "");
 
   try {
     // 1. Fetch article data from Supabase
