@@ -22,10 +22,13 @@ interface ApproveButtonProps {
 }
 
 export function ApproveButton({ articleSlug }: ApproveButtonProps) {
-  const { data: authData } = useQuickAuth<{ userFid: number }>("/api/auth");
+  const { data: authData } = useQuickAuth<{ userFid: number; isAdmin?: boolean; isReviewer?: boolean }>("/api/auth");
   const [edits, setEdits] = useState<ArticleEdit[]>([]);
   const [loading, setLoading] = useState(true);
   const [approving, setApproving] = useState(false);
+
+  // Only show for admins or reviewers
+  const canApprove = authData?.isAdmin || authData?.isReviewer;
 
   useEffect(() => {
     async function fetchEditsWithAuthors() {
@@ -105,7 +108,7 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
     }
   };
 
-  if (loading || edits.length === 0) return null;
+  if (loading || edits.length === 0 || !canApprove) return null;
 
   const pendingEdits = edits.filter(e => !e.approved);
   if (pendingEdits.length === 0) return null;

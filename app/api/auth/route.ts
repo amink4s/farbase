@@ -44,8 +44,37 @@ export async function GET(request: NextRequest) {
     const upsertResult = await upsertAccount(String(userFid));
     console.log(`[AUTH] Account upsert result:`, upsertResult);
 
-    // By default, we'll return the user's FID. Update this to meet your needs.
-    return NextResponse.json({ userFid });
+    // Fetch the user's account data to get admin status
+    let isAdmin = false;
+    let isReviewer = false;
+    try {
+      const SUPABASE_URL = process.env.SUPABASE_URL;
+      const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (SUPABASE_URL && SUPABASE_KEY) {
+        const accountResp = await fetch(
+          `${SUPABASE_URL}/rest/v1/accounts?fid=eq.${userFid}&select=is_admin,is_reviewer&limit=1`,
+          {
+            headers: {
+              Authorization: `Bearer ${SUPABASE_KEY}`,
+              apikey: SUPABASE_KEY,
+            },
+          }
+        );
+        if (accountResp.ok) {
+          const accounts = await accountResp.json();
+          if (Array.isArray(accounts) && accounts.length > 0) {
+            isAdmin = accounts[0].is_admin || false;
+            isReviewer = accounts[0].is_reviewer || false;
+            console.log(`[AUTH] User is_admin: ${isAdmin}, is_reviewer: ${isReviewer}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`[AUTH] Failed to fetch admin status:`, error);
+    }
+
+    // Return user data including admin status
+    return NextResponse.json({ userFid, isAdmin, isReviewer });
   } catch (e) {
     if (e instanceof Errors.InvalidTokenError) {
       return NextResponse.json({ message: "Invalid token" }, { status: 401 });

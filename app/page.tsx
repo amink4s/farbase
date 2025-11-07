@@ -207,19 +207,19 @@ export default function Home() {
           ) : null}
         </div>
 
-        {/* Recent Articles - shown when not searching */}
-        {!query && recentArticles.length > 0 && (
+        {/* Featured Articles - shown when not searching */}
+        {!query && featuredArticles.length > 0 && (
           <div style={{ width: '100%', maxWidth: 760, marginTop: 32 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Recent Articles</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>⭐ Featured</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {recentArticles.map((article) => (
+              {featuredArticles.map((article) => (
                 <Link 
                   key={article.slug} 
                   href={`/articles/${article.slug}`}
                   style={{
                     padding: '12px 16px',
-                    background: 'var(--card-bg, #fff)',
-                    border: '1px solid var(--border-color, #e5e7eb)',
+                    background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 193, 7, 0.05))',
+                    border: '2px solid rgba(255, 215, 0, 0.3)',
                     borderRadius: 8,
                     textDecoration: 'none',
                     color: 'var(--foreground)',
@@ -230,11 +230,11 @@ export default function Home() {
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--foreground)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.6)';
                     e.currentTarget.style.transform = 'translateX(4px)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--border-color, #e5e7eb)';
+                    e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.3)';
                     e.currentTarget.style.transform = 'translateX(0)';
                   }}
                 >
@@ -276,19 +276,19 @@ export default function Home() {
           </div>
         )}
 
-        {/* Featured Articles - shown when not searching */}
-        {!query && featuredArticles.length > 0 && (
+        {/* Recent Articles - shown when not searching */}
+        {!query && recentArticles.length > 0 && (
           <div style={{ width: '100%', maxWidth: 760, marginTop: 32 }}>
-            <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>⭐ Featured</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Recent Articles</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {featuredArticles.map((article) => (
+              {recentArticles.map((article) => (
                 <Link 
                   key={article.slug} 
                   href={`/articles/${article.slug}`}
                   style={{
                     padding: '12px 16px',
-                    background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 193, 7, 0.05))',
-                    border: '2px solid rgba(255, 215, 0, 0.3)',
+                    background: 'var(--card-bg, #fff)',
+                    border: '1px solid var(--border-color, #e5e7eb)',
                     borderRadius: 8,
                     textDecoration: 'none',
                     color: 'var(--foreground)',
@@ -299,11 +299,11 @@ export default function Home() {
                     transition: 'all 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.6)';
+                    e.currentTarget.style.borderColor = 'var(--foreground)';
                     e.currentTarget.style.transform = 'translateX(4px)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.3)';
+                    e.currentTarget.style.borderColor = 'var(--border-color, #e5e7eb)';
                     e.currentTarget.style.transform = 'translateX(0)';
                   }}
                 >
