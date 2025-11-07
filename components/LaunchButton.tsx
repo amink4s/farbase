@@ -34,7 +34,7 @@ export function LaunchButton({ href, title }: LaunchButtonProps) {
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      🚀 Launch {title}
+      Launch {title}
     </a>
   );
 }

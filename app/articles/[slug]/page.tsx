@@ -57,7 +57,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
       const neynarResp = await fetch(
         `https://api.neynar.com/v2/farcaster/user/bulk?fids=${article.author_fid}`,
         {
-          headers: { 'x-api-key': NEYNAR_API_KEY },
+          headers: { 'api_key': NEYNAR_API_KEY },
           next: { revalidate: 3600 }, // Cache for 1 hour
         }
       );
@@ -107,12 +107,18 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
       {/* Header with back button */}
       <div style={{ marginBottom: 32 }}>
         <Link href="/" style={{ 
-          color: 'var(--foreground)', 
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '10px 18px',
+          background: 'var(--foreground)',
+          color: 'var(--background)',
           textDecoration: 'none',
           fontSize: 14,
-          opacity: 0.7,
+          fontWeight: 600,
+          borderRadius: 8,
         }}>
-          ← Back
+          ← Home
         </Link>
       </div>
 
