@@ -1,10 +1,9 @@
 import React from "react";
-import ReactMarkdown from "react-markdown";
-import rehypeSanitize from "rehype-sanitize";
 import Link from "next/link";
 import Image from "next/image";
 import { LaunchButton } from "@/components/LaunchButton";
 import { ArticleAdminSection } from "@/components/ArticleAdminSection";
+import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 
 // Use a loose prop signature to satisfy Next.js PageProps constraints in the app router
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -231,27 +230,12 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
       )}
 
       {/* Article body */}
-      <article style={{
-        fontSize: 16,
-        lineHeight: 1.7,
-        color: 'var(--foreground)',
-      }}>
-        <ReactMarkdown 
-          rehypePlugins={[rehypeSanitize]}
-          components={{
-              h1: ({node: _node, ...props}) => <h2 style={{ fontWeight: 700, marginTop: 32, marginBottom: 16 }} {...props} />,
-              h2: ({node: _node, ...props}) => <h3 style={{ fontWeight: 700, marginTop: 24, marginBottom: 12 }} {...props} />,
-              h3: ({node: _node, ...props}) => <h4 style={{ fontWeight: 600, marginTop: 20, marginBottom: 10 }} {...props} />,
-              p: ({node: _node, ...props}) => <p style={{ marginBottom: 16 }} {...props} />,
-              strong: ({node: _node, ...props}) => <strong style={{ fontWeight: 700 }} {...props} />,
-          }}
-        >
-          {String(article.body)}
-        </ReactMarkdown>
-      </article>
+      <div style={{ fontSize: '1.1rem', lineHeight: 1.7 }}>
+        <MarkdownRenderer content={article.body} />
+      </div>
 
-      {/* Admin: Approve pending edits */}
-      <ArticleAdminSection articleId={article.id} articleSlug={slug} />
+      {/* Admin section */}
+      <ArticleAdminSection articleId={article.id} articleSlug={article.slug} />
     </div>
   );
 }
