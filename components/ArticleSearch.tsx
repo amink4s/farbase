@@ -69,7 +69,7 @@ export function ArticleSearch() {
     <div className={styles.searchContainer} ref={searchRef}>
       <input
         className={styles.searchInput}
-        placeholder="Search tokens or projects"
+        placeholder="Search projects or tokens"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => setIsFocused(true)}
