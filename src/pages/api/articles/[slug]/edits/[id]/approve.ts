@@ -150,18 +150,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const updated = await updateResp.json();
 
-    // After marking the edit approved, award contribution points to the edit author.
+    // After marking the edit approved, award contribution points to the edit author and approver.
     try {
-  // Determine points using configurable values
-  const cfg = getPointsConfig();
-  const awarded = wasPublished ? cfg.edit : cfg.initial;
+      // Author gets 1000 points, approver gets 100 points
+      const authorPoints = 1000;
+      const approverPoints = 100;
 
-      // Insert contributions ledger row
+      // Insert contributions ledger row for author
       const contribPayload = {
         fid: edit.author_fid,
         source_type: 'edit',
         source_id: edit.id,
-        points: awarded,
+        points: authorPoints,
         reason: wasPublished ? 'approved_edit' : 'initial_publication',
       };
 
@@ -178,11 +178,35 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!contribResp.ok) {
         const text = await contribResp.text();
-        console.warn('Failed to insert contribution row:', text);
+        console.warn('Failed to insert author contribution row:', text);
       }
 
-      // Upsert aggregate points in user_points. We first try to fetch existing row,
-      // then either patch (to increment) or insert.
+      // Insert contributions ledger row for approver (reviewer)
+      const approverContribPayload = {
+        fid: actorFid,
+        source_type: 'review',
+        source_id: edit.id,
+        points: approverPoints,
+        reason: 'approved_edit',
+      };
+
+      const approverContribResp = await fetch(`${SUPABASE_URL}/rest/v1/contributions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Prefer: 'return=representation',
+          Authorization: `Bearer ${String(SUPABASE_KEY)}`,
+          apikey: String(SUPABASE_KEY),
+        } as Record<string, string>,
+        body: JSON.stringify(approverContribPayload),
+      });
+
+      if (!approverContribResp.ok) {
+        const text = await approverContribResp.text();
+        console.warn('Failed to insert approver contribution row:', text);
+      }
+
+      // Update user_points for author
       const fid = edit.author_fid;
       const existingResp = await fetch(`${SUPABASE_URL}/rest/v1/user_points?fid=eq.${encodeURIComponent(String(fid))}&limit=1`, {
         headers: { Authorization: `Bearer ${String(SUPABASE_KEY)}`, apikey: String(SUPABASE_KEY) } as Record<string, string>,
@@ -190,14 +214,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!existingResp.ok) {
         const text = await existingResp.text();
-        console.warn('Failed to fetch user_points row:', text);
+        console.warn('Failed to fetch author user_points row:', text);
       } else {
         const existingRows = await existingResp.json();
         const existing = Array.isArray(existingRows) ? existingRows[0] : existingRows;
 
         if (existing) {
           // PATCH to increment total_points
-          const newTotal = (Number(existing.total_points) || 0) + awarded;
+          const newTotal = (Number(existing.total_points) || 0) + authorPoints;
           const patchResp = await fetch(`${SUPABASE_URL}/rest/v1/user_points?fid=eq.${encodeURIComponent(String(fid))}`, {
             method: 'PATCH',
             headers: {
@@ -210,7 +234,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           });
           if (!patchResp.ok) {
             const text = await patchResp.text();
-            console.warn('Failed to patch user_points row:', text);
+            console.warn('Failed to patch author user_points row:', text);
           }
         } else {
           // Insert new row
@@ -222,14 +246,64 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
               Authorization: `Bearer ${String(SUPABASE_KEY)}`,
               apikey: String(SUPABASE_KEY),
             } as Record<string, string>,
-            body: JSON.stringify({ fid, total_points: awarded }),
+            body: JSON.stringify({ fid, total_points: authorPoints }),
           });
           if (!insertResp.ok) {
             const text = await insertResp.text();
-            console.warn('Failed to insert user_points row:', text);
+            console.warn('Failed to insert author user_points row:', text);
           }
         }
       }
+
+      // Update user_points for approver
+      const approverExistingResp = await fetch(`${SUPABASE_URL}/rest/v1/user_points?fid=eq.${encodeURIComponent(String(actorFid))}&limit=1`, {
+        headers: { Authorization: `Bearer ${String(SUPABASE_KEY)}`, apikey: String(SUPABASE_KEY) } as Record<string, string>,
+      });
+
+      if (!approverExistingResp.ok) {
+        const text = await approverExistingResp.text();
+        console.warn('Failed to fetch approver user_points row:', text);
+      } else {
+        const approverExistingRows = await approverExistingResp.json();
+        const approverExisting = Array.isArray(approverExistingRows) ? approverExistingRows[0] : approverExistingRows;
+
+        if (approverExisting) {
+          // PATCH to increment total_points
+          const approverNewTotal = (Number(approverExisting.total_points) || 0) + approverPoints;
+          const approverPatchResp = await fetch(`${SUPABASE_URL}/rest/v1/user_points?fid=eq.${encodeURIComponent(String(actorFid))}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              Prefer: 'return=representation',
+              Authorization: `Bearer ${String(SUPABASE_KEY)}`,
+              apikey: String(SUPABASE_KEY),
+            } as Record<string, string>,
+            body: JSON.stringify({ total_points: approverNewTotal, last_updated: new Date().toISOString() }),
+          });
+          if (!approverPatchResp.ok) {
+            const text = await approverPatchResp.text();
+            console.warn('Failed to patch approver user_points row:', text);
+          }
+        } else {
+          // Insert new row
+          const approverInsertResp = await fetch(`${SUPABASE_URL}/rest/v1/user_points`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Prefer: 'return=representation',
+              Authorization: `Bearer ${String(SUPABASE_KEY)}`,
+              apikey: String(SUPABASE_KEY),
+            } as Record<string, string>,
+            body: JSON.stringify({ fid: actorFid, total_points: approverPoints }),
+          });
+          if (!approverInsertResp.ok) {
+            const text = await approverInsertResp.text();
+            console.warn('Failed to insert approver user_points row:', text);
+          }
+        }
+      }
+      
+      console.log(`[APPROVE] Awarded ${authorPoints} points to author FID ${edit.author_fid} and ${approverPoints} points to approver FID ${actorFid}`);
     } catch (e) {
       console.error('Error awarding points after approval:', e);
     }

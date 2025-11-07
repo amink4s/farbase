@@ -65,9 +65,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const q = (req.query.search as string) || "";
       const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : null;
+      const featured = req.query.featured === "true";
       
       let url;
-      if (!q && !limit) {
+      if (featured) {
+        // Fetch featured articles
+        url = `${SUPABASE_URL}/rest/v1/articles?select=slug,title,metadata,created_at,author_fid&is_featured=eq.true&order=created_at.desc&limit=10`;
+      } else if (!q && !limit) {
         return res.status(200).json({ articles: [] });
       } else if (!q && limit) {
         // Fetch recent articles

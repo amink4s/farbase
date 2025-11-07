@@ -2,11 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { useQuickAuth } from "@coinbase/onchainkit/minikit";
+import Image from "next/image";
 
 interface ArticleEdit {
   id: string;
   article_id: string;
   author_fid: string;
+  author_username?: string;
+  author_display_name?: string;
+  author_pfp?: string;
   body: string;
   approved: boolean;
   created_at: string;
@@ -24,12 +28,45 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
   const [approving, setApproving] = useState(false);
 
   useEffect(() => {
-    async function fetchEdits() {
+    async function fetchEditsWithAuthors() {
       try {
         const resp = await fetch(`/api/articles/${articleSlug}/edits`);
         if (resp.ok) {
           const data = await resp.json();
-          setEdits(data.edits || []);
+          const editsData = data.edits || [];
+          
+          // Fetch author info for each edit
+          const editsWithAuthors = await Promise.all(
+            editsData.map(async (edit: ArticleEdit) => {
+              try {
+                const neynarResp = await fetch(
+                  `https://api.neynar.com/v2/farcaster/user/bulk?fids=${edit.author_fid}`,
+                  {
+                    headers: {
+                      api_key: process.env.NEXT_PUBLIC_NEYNAR_API_KEY || "",
+                    },
+                  }
+                );
+                if (neynarResp.ok) {
+                  const neynarData = await neynarResp.json();
+                  const user = neynarData.users?.[0];
+                  if (user) {
+                    return {
+                      ...edit,
+                      author_username: user.username,
+                      author_display_name: user.display_name,
+                      author_pfp: user.pfp_url,
+                    };
+                  }
+                }
+              } catch (err) {
+                console.warn("Failed to fetch author:", err);
+              }
+              return edit;
+            })
+          );
+          
+          setEdits(editsWithAuthors);
         }
       } catch (err) {
         console.error("Failed to fetch edits:", err);
@@ -37,7 +74,7 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
         setLoading(false);
       }
     }
-    fetchEdits();
+    fetchEditsWithAuthors();
   }, [articleSlug]);
 
   const handleApprove = async (editId: string) => {
@@ -92,8 +129,24 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
           borderRadius: 8,
           marginBottom: 12,
         }}>
-          <div style={{ fontSize: 13, color: 'var(--text-secondary, #666)', marginBottom: 8 }}>
-            Created {new Date(edit.created_at).toLocaleDateString()}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+            {edit.author_pfp && (
+              <Image
+                src={edit.author_pfp}
+                alt={edit.author_display_name || 'Author'}
+                width={32}
+                height={32}
+                style={{ borderRadius: '50%' }}
+              />
+            )}
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600 }}>
+                {edit.author_display_name || edit.author_username || `FID ${edit.author_fid}`}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--text-secondary, #666)' }}>
+                Created {new Date(edit.created_at).toLocaleDateString()}
+              </div>
+            </div>
           </div>
           <div style={{ fontSize: 14, marginBottom: 12, maxHeight: 100, overflow: 'auto' }}>
             {edit.body.substring(0, 200)}...
@@ -113,7 +166,7 @@ export function ApproveButton({ articleSlug }: ApproveButtonProps) {
               opacity: approving ? 0.6 : 1,
             }}
           >
-            {approving ? 'Approving...' : '✓ Approve & Award Points'}
+            {approving ? 'Approving...' : '✓ Approve & Award Points (Author: 1000, You: 100)'}
           </button>
         </div>
       ))}
