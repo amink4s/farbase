@@ -11,8 +11,9 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
   const [category, setCategory] = useState<"article" | "token">("article");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [tokenAddress, setTokenAddress] = useState("");
-    const [launcher, setLauncher] = useState<"clanker" | "zora" | "other">("clanker");
+  const [launcher, setLauncher] = useState<"clanker" | "zora" | "other">("clanker");
   const [miniAppLink, setMiniAppLink] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,12 +21,13 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
     setError(null);
 
     // Server will verify QuickAuth JWT and set `author_fid` from the token's `sub`.
-  const payload = { slug, title, body, category, metadata: {} as Record<string, unknown> };
-  if (category === "token" && tokenAddress) payload.metadata.tokenAddress = tokenAddress;
-      if (category === "token") payload.metadata.launcher = launcher;
-  if (category === "article" && miniAppLink) payload.metadata.miniAppLink = miniAppLink;
-  // persist category in metadata for server-side queries
-  payload.metadata.category = category;
+    const payload = { slug, title, body, category, metadata: {} as Record<string, unknown> };
+    if (category === "token" && tokenAddress) payload.metadata.tokenAddress = tokenAddress;
+    if (category === "token") payload.metadata.launcher = launcher;
+    if (category === "article" && miniAppLink) payload.metadata.miniAppLink = miniAppLink;
+    if (imageUrl) payload.metadata.imageUrl = imageUrl;
+    // persist category in metadata for server-side queries
+    payload.metadata.category = category;
 
     try {
       let res: Response;
@@ -349,11 +351,12 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
               Content <span style={{ color: 'var(--text-secondary)', fontWeight: 400 }}>(Markdown supported)</span>
             </label>
             <textarea
+              id="body"
               value={body}
               onChange={(e) => setBody(e.target.value)}
               placeholder="Write your article content here..."
               required
-              rows={14}
+              rows={10}
               style={{ 
                 width: "100%", 
                 padding: '12px 16px',
@@ -365,6 +368,27 @@ export default function ArticleForm({ onSuccess, onCategoryChange }: { onSuccess
                 fontFamily: 'inherit',
                 resize: 'vertical'
               }}
+            />
+          </div>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: 'block', marginBottom: 8, fontSize: 14, fontWeight: 500, color: 'var(--foreground)' }}>
+              Image URL (for share embed)
+            </label>
+            <input
+              type="text"
+              id="imageUrl"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              style={{ 
+                width: "100%", 
+                padding: '12px 16px',
+                background: 'var(--input-bg)',
+                border: '1px solid var(--input-border)',
+                borderRadius: 8,
+                fontSize: 15,
+                color: 'var(--foreground)'
+              }}
+              placeholder="https://example.com/image.png"
             />
           </div>
           

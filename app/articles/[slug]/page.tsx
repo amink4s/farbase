@@ -1,9 +1,34 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { Metadata } from "next";
+import { headers } from "next/headers";
 import { LaunchButton } from "@/components/LaunchButton";
 import { ArticleAdminSection } from "@/components/ArticleAdminSection";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { ShareButton } from "@/components/ShareButton";
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const { slug } = params;
+  const headerHost = (await headers()).get("host");
+  const protocol = headerHost?.startsWith("localhost") ? "http" : "https";
+  const articleUrl = `${protocol}://${headerHost}/articles/${slug}`;
+
+  return {
+    title: "Article",
+    openGraph: {
+      title: "Article",
+      images: [`${protocol}://${headerHost}/api/og/article/${slug}`],
+    },
+    other: {
+      "fc:frame": "vNext",
+      "fc:frame:image": `${protocol}://${headerHost}/api/og/article/${slug}`,
+      "fc:frame:button:1": "Read Article",
+      "fc:frame:post_url": articleUrl, // Post to the same URL to see the article
+      "of:accepts:farcaster": "vNext",
+    },
+  };
+}
 
 // Use a loose prop signature to satisfy Next.js PageProps constraints in the app router
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -98,6 +123,10 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const tokenAddress = article.metadata?.tokenAddress;
   const launcher = article.metadata?.launcher;
 
+  const headerHost = (await headers()).get("host");
+  const protocol = headerHost?.startsWith("localhost") ? "http" : "https";
+  const articleUrl = `${protocol}://${headerHost}/articles/${slug}`;
+
   return (
     <div style={{ 
       maxWidth: 800, 
@@ -105,7 +134,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
       padding: '24px 20px',
     }}>
       {/* Header with back button */}
-      <div style={{ marginBottom: 32 }}>
+      <div style={{ marginBottom: 32, display: "flex", gap: 12 }}>
         <Link href="/" style={{ 
           display: 'inline-flex',
           alignItems: 'center',
@@ -120,6 +149,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
         }}>
           ← Home
         </Link>
+        <ShareButton articleUrl={articleUrl} articleTitle={article.title} />
       </div>
 
       {/* Category badge */}
