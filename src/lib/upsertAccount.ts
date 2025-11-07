@@ -62,25 +62,55 @@ export async function upsertAccount(fid: string, displayName?: string, skipNeyna
               payload.verified_addresses = user.verified_addresses;
             }
             
-            // Auto-grant admin to high-quality users with strict spam filtering
-            // Requirements:
+            // Fetch Neynar user score from score endpoint
+            let neynarScore = 0;
+            try {
+              const scoreResp = await fetch(
+                `https://api.neynar.com/v1/farcaster/user?fid=${fid}`,
+                {
+                  headers: {
+                    "Accept": "application/json",
+                    "api_key": NEYNAR_API_KEY,
+                  },
+                }
+              );
+              if (scoreResp.ok) {
+                const scoreData = await scoreResp.json();
+                neynarScore = scoreData.result?.user?.neynarScore || 0;
+              }
+            } catch (scoreErr) {
+              console.warn(`[UPSERT] Failed to fetch Neynar score for FID ${fid}:`, scoreErr);
+            }
+            
+            // Auto-grant admin to high-quality users with strict filtering
+            // Requirements (ALL must be met):
             // 1. Must have active_status "active:2" (unlikely to spam - Farcaster spam label 2)
-            // 2. Either: 100k+ followers OR trusted FID
+            // 2. Must have Neynar score > 0.99
+            // 3. Either: 100k+ followers OR trusted FID
             const followerCount = user.follower_count || 0;
             const trustedFids = ['477126']; // Add more trusted FIDs here
             const activeStatus = user.active_status || '';
             
             // Check if user has spam label 2 (unlikely to spam)
             const hasGoodSpamLabel = activeStatus === 'active:2';
+            const hasHighScore = neynarScore > 0.99;
+            const hasHighFollowers = followerCount >= 100000;
+            const isTrustedFid = trustedFids.includes(fid);
             
-            if (hasGoodSpamLabel && (followerCount >= 100000 || trustedFids.includes(fid))) {
+            if (hasGoodSpamLabel && hasHighScore && (hasHighFollowers || isTrustedFid)) {
               payload.is_admin = true;
-              console.log(`[UPSERT] 🔐 Auto-granted admin to FID ${fid} (followers: ${followerCount}, spam label: ${activeStatus})`);
-            } else if (!hasGoodSpamLabel && followerCount >= 100000) {
-              console.log(`[UPSERT] ⚠️ FID ${fid} has high followers (${followerCount}) but spam label is ${activeStatus}, not granting admin`);
+              console.log(`[UPSERT] 🔐 Auto-granted admin to FID ${fid} (followers: ${followerCount}, spam: ${activeStatus}, score: ${neynarScore})`);
+            } else {
+              const reasons = [];
+              if (!hasGoodSpamLabel) reasons.push(`spam label: ${activeStatus}`);
+              if (!hasHighScore) reasons.push(`score: ${neynarScore}`);
+              if (!hasHighFollowers && !isTrustedFid) reasons.push(`followers: ${followerCount}`);
+              if (reasons.length > 0) {
+                console.log(`[UPSERT] ⚠️ FID ${fid} not granted admin - Failed: ${reasons.join(', ')}`);
+              }
             }
             
-            console.log(`[UPSERT] Fetched full profile for FID ${fid}: @${user.username} (${followerCount} followers, spam: ${activeStatus})`);
+            console.log(`[UPSERT] Fetched full profile for FID ${fid}: @${user.username} (${followerCount} followers, spam: ${activeStatus}, score: ${neynarScore})`);
           } else {
             console.warn(`[UPSERT] FID ${fid} not found in Neynar`);
           }
