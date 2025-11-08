@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useMiniKit } from "@coinbase/onchainkit/minikit";
+import { sdk } from "@farcaster/miniapp-sdk";
 
 interface LaunchButtonProps {
   href: string;
@@ -10,15 +10,20 @@ interface LaunchButtonProps {
 
 export function LaunchButton({ href, title }: LaunchButtonProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const mini = useMiniKit();
 
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // Attempt to open any link as a mini app if the function exists
-    if (mini && 'openMiniApp' in mini && typeof mini.openMiniApp === 'function') {
-      e.preventDefault(); // Prevent default browser navigation
-      mini.openMiniApp(href);
+  const handleClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault(); // Prevent default browser navigation
+    
+    try {
+      // Use the Farcaster SDK to open the Mini App
+      // This works with any URL - if it's a Mini App, it will open as a Mini App
+      await sdk.actions.openMiniApp({ url: href });
+      // Navigation successful - current app will close
+    } catch (error) {
+      console.error('Failed to open Mini App:', error);
+      // Fallback to opening in a new tab if openMiniApp fails
+      window.open(href, '_blank', 'noopener,noreferrer');
     }
-    // For other links, or as a fallback, the default <a> tag behavior will apply (target="_blank")
   };
 
   return (
