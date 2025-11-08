@@ -1,145 +1,109 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useMiniKit } from "@coinbase/onchainkit/minikit";
-import { createClient } from "@supabase/supabase-js";
+import { useCallback, useState } from "react";
 
-interface LikeFlagButtonsProps {
+declare global {
+  interface Window {
+    farcasterkit: {
+      quickAuth: {
+        fetch: (
+          url: string,
+          options?: RequestInit,
+        ) => Promise<Response>;
+      };
+    };
+  }
+}
+
+type LikeFlagButtonsProps = {
   articleSlug: string;
   initialLikes: number;
   initialFlags: number;
-}
-
-// This is a public-facing client component, so we use the anon key
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+  hasLiked: boolean;
+  hasFlagged: boolean;
+};
 
 export function LikeFlagButtons({
   articleSlug,
   initialLikes,
   initialFlags,
+  hasLiked,
+  hasFlagged,
 }: LikeFlagButtonsProps) {
-  const { sdk, context } = useMiniKit();
   const [likes, setLikes] = useState(initialLikes);
   const [flags, setFlags] = useState(initialFlags);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [userHasLiked, setUserHasLiked] = useState(false);
-  const [userHasFlagged, setUserHasFlagged] = useState(false);
+  const [userHasLiked, setUserHasLiked] = useState(hasLiked);
+  const [userHasFlagged, setUserHasFlagged] = useState(hasFlagged);
+  const [isLiking, setIsLiking] = useState(false);
+  const [isFlagging, setIsFlagging] = useState(false);
 
-  const userFid = context?.user?.fid;
-
-  useEffect(() => {
-    // Check if the user has already liked or flagged this article
-    const checkUserActions = async () => {
-      if (!userFid) return;
-
-      const { data: article, error: articleError } = await supabase
-        .from("articles")
-        .select("id")
-        .eq("slug", articleSlug)
-        .single();
-
-      if (articleError || !article) return;
-
-      const [likeRes, flagRes] = await Promise.all([
-        supabase
-          .from("likes")
-          .select("id")
-          .eq("article_id", article.id)
-          .eq("user_fid", userFid)
-          .limit(1),
-        supabase
-          .from("flags")
-          .select("id")
-          .eq("article_id", article.id)
-          .eq("user_fid", userFid)
-          .limit(1),
-      ]);
-
-      if (likeRes.data && likeRes.data.length > 0) {
-        setUserHasLiked(true);
-      }
-      if (flagRes.data && flagRes.data.length > 0) {
-        setUserHasFlagged(true);
-      }
-    };
-
-    checkUserActions();
-  }, [userFid, articleSlug]);
-
-  const handleAction = async (action: "like" | "flag") => {
-    setIsLoading(true);
-    setError(null);
+  const handleLike = useCallback(async () => {
+    if (isLiking || userHasLiked || typeof window.farcasterkit === 'undefined') return;
+    setIsLiking(true);
 
     try {
-      const response = await sdk.quickAuth.fetch(
-        `/api/articles/${articleSlug}/${action}`,
-        { method: "POST" }
+      const response = await window.farcasterkit.quickAuth.fetch(
+        `/api/articles/${articleSlug}/like`,
+        {
+          method: "POST",
+        },
       );
+      const data = await response.json();
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "An unknown error occurred");
-      }
-
-      if (action === "like") {
+      if (response.ok) {
         setLikes((prev) => prev + 1);
         setUserHasLiked(true);
+        console.log("Article liked, points awarded:", data.pointsAwarded);
       } else {
+        console.error("Failed to like article:", data.error);
+      }
+    } catch (error) {
+      console.error("Error liking article:", error);
+    } finally {
+      setIsLiking(false);
+    }
+  }, [articleSlug, isLiking, userHasLiked]);
+
+  const handleFlag = useCallback(async () => {
+    if (isFlagging || userHasFlagged || typeof window.farcasterkit === 'undefined') return;
+    setIsFlagging(true);
+
+    try {
+      const response = await window.farcasterkit.quickAuth.fetch(
+        `/api/articles/${articleSlug}/flag`,
+        {
+          method: "POST",
+        },
+      );
+      const data = await response.json();
+
+      if (response.ok) {
         setFlags((prev) => prev + 1);
         setUserHasFlagged(true);
+      } else {
+        console.error("Failed to flag article:", data.error);
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to perform action");
+    } catch (error) {
+      console.error("Error flagging article:", error);
     } finally {
-      setIsLoading(false);
+      setIsFlagging(false);
     }
-  };
+  }, [articleSlug, isFlagging, userHasFlagged]);
 
   return (
-    <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
+    <div style={{ display: "flex", gap: "1rem", marginTop: "1rem" }}>
       <button
-        onClick={() => handleAction("like")}
-        disabled={isLoading || userHasLiked}
-        style={{
-          background: userHasLiked ? "var(--accent-color-secondary)" : "var(--card-bg)",
-          color: "var(--foreground)",
-          border: "1px solid var(--border-color)",
-          borderRadius: 8,
-          padding: "8px 12px",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          cursor: isLoading || userHasLiked ? "not-allowed" : "pointer",
-          opacity: isLoading || userHasLiked ? 0.6 : 1,
-        }}
+        onClick={handleLike}
+        disabled={isLiking || userHasLiked}
       >
-        <span>👍</span>
-        <span>{likes}</span>
+        {isLiking ? "Liking..." : `👍 Like (${likes})`}
       </button>
       <button
-        onClick={() => handleAction("flag")}
-        disabled={isLoading || userHasFlagged}
-        style={{
-          background: userHasFlagged ? "var(--accent-color-secondary)" : "var(--card-bg)",
-          color: "var(--foreground)",
-          border: "1px solid var(--border-color)",
-          borderRadius: 8,
-          padding: "8px 12px",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          cursor: isLoading || userHasFlagged ? "not-allowed" : "pointer",
-          opacity: isLoading || userHasFlagged ? 0.6 : 1,
-        }}
+        onClick={handleFlag}
+        disabled={isFlagging || userHasFlagged}
       >
-        <span>🚩</span>
-        <span>{flags}</span>
+        {isFlagging ? "Flagging..." : `🚩 Flag (${flags})`}
       </button>
-      {error && <div style={{ color: "red", fontSize: 12 }}>{error}</div>}
     </div>
   );
 }

@@ -1,14 +1,18 @@
 import React from "react";
 import Link from "next/link";
 import Image from "next/image";
-// metadata handled via OG endpoint; no types needed here
-import { LaunchButton } from "@/components/LaunchButton";
-import { ArticleAdminSection } from "@/components/ArticleAdminSection";
-import { MarkdownRenderer } from "@/components/MarkdownRenderer";
-import { ShareButton } from "@/components/ShareButton";
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient } from "@farcaster/quick-auth";
 import { headers } from "next/headers";
-import { LikeFlagButtons } from "@/components/LikeFlagButtons";
-import { createClient } from "@supabase/supabase-js";
+import { LikeFlagButtons } from "../../../components/LikeFlagButtons";
+import { ShareButton } from "../../../components/ShareButton";
+import { LaunchButton } from "../../../components/LaunchButton";
+import { MarkdownRenderer } from "../../../components/MarkdownRenderer";
+import { ArticleAdminSection } from "../../../components/ArticleAdminSection";
+
+const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // generateMetadata removed temporarily to avoid type incompatibilities during CI build.
 // We rely on the OG image endpoint at /api/og/article/[slug] and Next's default metadata.
@@ -18,22 +22,23 @@ import { createClient } from "@supabase/supabase-js";
 export default async function ArticleViewPage(props: any) {
   const slug = props?.params?.slug ?? "";
 
-  const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
-
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  async function getArticle(slug: string) {
+    const supabase = createSupabaseClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!);
+    const { data: article, error } = await supabase
+      .from("articles")
+      .select("*,mini_app_link")
+      .eq("slug", slug)
+      .limit(1)
+      .single();
 
-  const { data: article, error: articleError } = await supabase
-    .from("articles")
-    .select("*,mini_app_link")
-    .eq("slug", slug)
-    .limit(1)
-    .single();
+    return { article, error };
+  }
+
+  const { article, error: articleError } = await getArticle(slug);
 
   if (articleError || !article) {
     return (
@@ -47,15 +52,64 @@ export default async function ArticleViewPage(props: any) {
 
   // Fetch counts for likes and flags
   const [{ count: likeCount }, { count: flagCount }] = await Promise.all([
-    supabase
+    createSupabaseClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
       .from("likes")
       .select("*", { count: "exact", head: true })
       .eq("article_id", article.id),
-    supabase
+    createSupabaseClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
       .from("flags")
       .select("*", { count: "exact", head: true })
       .eq("article_id", article.id),
   ]);
+
+  // Check if user has liked or flagged
+  let hasLiked = false;
+  let hasFlagged = false;
+  let userFid: number | undefined = undefined;
+
+  const headerList = await headers();
+  const authorization = headerList.get("Authorization");
+  const token = authorization?.replace("Bearer ", "");
+  const appDomain = "farbase-phi.vercel.app";
+
+  if (token) {
+    try {
+      // This is safe to instantiate here; it doesn't make a network call.
+      const quickAuthClient = createClient();
+      const payload = await quickAuthClient.verifyJwt({
+        token,
+        domain: appDomain,
+      });
+      userFid = payload.sub;
+    } catch (error) {
+      console.warn("Invalid QuickAuth token:", error);
+    }
+  }
+
+  if (userFid) {
+    const supabase = createSupabaseClient(
+      SUPABASE_URL!,
+      SUPABASE_SERVICE_ROLE_KEY!
+    );
+    const [{ data: likeData }, { data: flagData }] = await Promise.all([
+      supabase
+        .from("likes")
+        .select("id")
+        .eq("article_id", article.id)
+        .eq("user_fid", userFid)
+        .limit(1)
+        .single(),
+      supabase
+        .from("flags")
+        .select("id")
+        .eq("article_id", article.id)
+        .eq("user_fid", userFid)
+        .limit(1)
+        .single(),
+    ]);
+    hasLiked = !!likeData;
+    hasFlagged = !!flagData;
+  }
 
   // Fetch author username from Neynar
   let authorUsername = `FID ${article.author_fid}`;
@@ -86,6 +140,10 @@ export default async function ArticleViewPage(props: any) {
   // Fetch point total for author
   let authorPoints = 0;
   try {
+    const supabase = createSupabaseClient(
+      SUPABASE_URL!,
+      SUPABASE_SERVICE_ROLE_KEY!
+    );
     const ptsResp = await supabase
       .from("user_points")
       .select("total_points")
@@ -104,8 +162,7 @@ export default async function ArticleViewPage(props: any) {
   const tokenAddress = article.metadata?.tokenAddress;
   const launcher = article.metadata?.launcher;
 
-  const heads = await headers();
-  const headerHost = heads.get("host");
+  const headerHost = headerList.get("host");
   const protocol = headerHost?.startsWith("localhost") ? "http" : "https";
   const articleUrl = `${protocol}://${headerHost}/articles/${slug}`;
 
@@ -245,40 +302,12 @@ export default async function ArticleViewPage(props: any) {
           articleSlug={slug}
           initialLikes={likeCount ?? 0}
           initialFlags={flagCount ?? 0}
+          hasLiked={hasLiked}
+          hasFlagged={hasFlagged}
         />
       </div>
 
-      {/* Token metadata if applicable */}
-      {category === "token" && (tokenAddress || launcher) && (
-        <div
-          style={{
-            marginBottom: 32,
-            padding: 16,
-            background: "var(--card-bg, #f9fafb)",
-            borderRadius: 8,
-            border: "1px solid var(--border-color, #e5e7eb)",
-          }}
-        >
-          {launcher && (
-            <div style={{ marginBottom: tokenAddress ? 8 : 0 }}>
-              <strong>Launcher:</strong>{" "}
-              {launcher.charAt(0).toUpperCase() + launcher.slice(1)}
-            </div>
-          )}
-          {tokenAddress && (
-            <div
-              style={{
-                fontSize: 13,
-                wordBreak: "break-all",
-              }}
-            >
-              <strong>Contract:</strong> <code>{tokenAddress}</code>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Article body */}
+      {/* Main content */}
       <div style={{ fontSize: "1.1rem", lineHeight: 1.7 }}>
         <MarkdownRenderer content={article.body} />
       </div>
