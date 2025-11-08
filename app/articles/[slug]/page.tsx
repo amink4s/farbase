@@ -159,8 +159,8 @@ export default async function ArticleViewPage(props: any) {
   }
 
   const category = article.metadata?.category || "article";
-  const tokenAddress = article.metadata?.tokenAddress;
-  const launcher = article.metadata?.launcher;
+  const _tokenAddress = article.metadata?.tokenAddress;
+  const _launcher = article.metadata?.launcher;
 
   const headerHost = headerList.get("host");
   const protocol = headerHost?.startsWith("localhost") ? "http" : "https";
