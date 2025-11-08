@@ -78,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Only award points if the like was new
     if (!likeError) {
       // 6. Award 1 point to the author
-      const { data: authorPoints, error: pointsError } = await supabase
+      const { error: pointsError } = await supabase
         .rpc("increment_user_points", { user_fid_to_update: article.author_fid, points_to_add: 1 });
 
       if (pointsError) throw new Error(`Failed to award points: ${pointsError.message}`);
