@@ -20,26 +20,21 @@ export default function Home() {
     }
   }, [setMiniAppReady, isMiniAppReady]);
 
-  const [recentArticles, setRecentArticles] = useState<Array<{ 
-    slug: string; 
-    title: string; 
-    created_at: string; 
+  type ArticleListItem = {
+    slug: string;
+    title: string;
+    created_at: string;
     author_fid: string;
     author_username?: string;
     author_display_name?: string;
     author_pfp?: string;
-    metadata?: { category?: string } 
-  }>>([]);
-  const [featuredArticles, setFeaturedArticles] = useState<Array<{ 
-    slug: string; 
-    title: string; 
-    created_at: string; 
-    author_fid: string;
-    author_username?: string;
-    author_display_name?: string;
-    author_pfp?: string;
-    metadata?: { category?: string } 
-  }>>([]);
+    metadata?: { category?: string };
+  };
+
+  const [recentArticles, setRecentArticles] = useState<ArticleListItem[]>([]);
+  const [featuredArticles, setFeaturedArticles] = useState<ArticleListItem[]>([]);
+  const [counts, setCounts] = useState<Record<string, { likes: number; flags: number }>>({});
+  const [isLoadingCounts, setIsLoadingCounts] = useState(false);
 
   // DELETED: Debounced search effect, now handled in ArticleSearch component
   // useEffect(() => { ... });
@@ -126,6 +121,41 @@ export default function Home() {
     fetchFeaturedArticles();
   }, []);
 
+  // Fetch counts once we have either recent or featured articles
+  useEffect(() => {
+    const allSlugs = Array.from(new Set([...recentArticles, ...featuredArticles].map(a => a.slug)));
+    if (allSlugs.length === 0) return;
+    let cancelled = false;
+    async function fetchCounts() {
+      setIsLoadingCounts(true);
+      try {
+        const resp = await fetch('/api/articles/counts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slugs: allSlugs }),
+        });
+        if (resp.ok) {
+          const json = await resp.json();
+          if (!cancelled && json.counts) setCounts(json.counts);
+        } else {
+          console.warn('Failed to fetch article counts');
+        }
+      } catch (e) {
+        console.warn('Counts fetch error', e);
+      } finally {
+        if (!cancelled) setIsLoadingCounts(false);
+      }
+    }
+    fetchCounts();
+    return () => { cancelled = true; };
+  }, [recentArticles, featuredArticles]);
+
+  const formatCounts = (slug: string) => {
+    const c = counts[slug];
+    if (!c) return isLoadingCounts ? '…' : '0';
+    return `${c.likes ?? 0}👍 · ${c.flags ?? 0}🚩`;
+  };
+
   return (
     <div className={styles.container}>
       <div style={{ padding: "2rem", display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -193,19 +223,24 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                    {article.metadata?.category && (
-                      <span style={{
-                        padding: '4px 8px',
-                        background: article.metadata.category === 'token' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                        color: article.metadata.category === 'token' ? 'rgb(139, 92, 246)' : 'rgb(59, 130, 246)',
-                        borderRadius: 4,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        flexShrink: 0
-                      }}>
-                        {article.metadata.category === 'token' ? 'Token' : 'Project'}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                      {article.metadata?.category && (
+                        <span style={{
+                          padding: '4px 8px',
+                          background: article.metadata.category === 'token' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                          color: article.metadata.category === 'token' ? 'rgb(139, 92, 246)' : 'rgb(59, 130, 246)',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          flexShrink: 0
+                        }}>
+                          {article.metadata.category === 'token' ? 'Token' : 'Project'}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary, #555)', fontWeight: 500 }}>
+                        {formatCounts(article.slug)}
                       </span>
-                    )}
+                    </div>
                   </Link>
                 ))}
               </div>
@@ -261,19 +296,24 @@ export default function Home() {
                         </div>
                       </div>
                     </div>
-                    {article.metadata?.category && (
-                      <span style={{
-                        padding: '4px 8px',
-                        background: article.metadata.category === 'token' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                        color: article.metadata.category === 'token' ? 'rgb(139, 92, 246)' : 'rgb(59, 130, 246)',
-                        borderRadius: 4,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        flexShrink: 0
-                      }}>
-                        {article.metadata.category === 'token' ? 'Token' : 'Project'}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+                      {article.metadata?.category && (
+                        <span style={{
+                          padding: '4px 8px',
+                          background: article.metadata.category === 'token' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                          color: article.metadata.category === 'token' ? 'rgb(139, 92, 246)' : 'rgb(59, 130, 246)',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          flexShrink: 0
+                        }}>
+                          {article.metadata.category === 'token' ? 'Token' : 'Project'}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary, #555)', fontWeight: 500 }}>
+                        {formatCounts(article.slug)}
                       </span>
-                    )}
+                    </div>
                   </Link>
                 ))}
               </div>
