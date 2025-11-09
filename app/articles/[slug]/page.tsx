@@ -65,7 +65,7 @@ export default async function ArticleViewPage(props: any) {
   // Check if user has liked or flagged
   let hasLiked = false;
   let hasFlagged = false;
-  let userFid: number | undefined = undefined;
+  let userFid: string | undefined = undefined;
 
   const headerList = await headers();
   const authorization = headerList.get("Authorization");
@@ -80,7 +80,7 @@ export default async function ArticleViewPage(props: any) {
         token,
         domain: appDomain,
       });
-      userFid = payload.sub;
+      userFid = String(payload.sub);
     } catch (error) {
       console.warn("Invalid QuickAuth token:", error);
     }

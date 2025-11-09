@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       token: req.headers.authorization!.split(" ")[1],
       domain: host,
     });
-    const flaggerFid = payload.sub;
+    const flaggerFid = String(payload.sub);
     if (!flaggerFid) {
       return res.status(401).json({ error: "Could not determine user FID from token" });
     }
