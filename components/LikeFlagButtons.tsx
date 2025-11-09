@@ -1,19 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-
-declare global {
-  interface Window {
-    farcasterkit: {
-      quickAuth: {
-        fetch: (
-          url: string,
-          options?: RequestInit,
-        ) => Promise<Response>;
-      };
-    };
-  }
-}
+import { sdk } from "@farcaster/miniapp-sdk";
 
 type LikeFlagButtonsProps = {
   articleSlug: string;
@@ -38,11 +26,11 @@ export function LikeFlagButtons({
   const [isFlagging, setIsFlagging] = useState(false);
 
   const handleLike = useCallback(async () => {
-    if (isLiking || userHasLiked || typeof window.farcasterkit === 'undefined') return;
+    if (isLiking || userHasLiked) return;
     setIsLiking(true);
 
     try {
-      const response = await window.farcasterkit.quickAuth.fetch(
+      const response = await sdk.quickAuth.fetch(
         `/api/articles/${articleSlug}/like`,
         {
           method: "POST",
@@ -65,11 +53,11 @@ export function LikeFlagButtons({
   }, [articleSlug, isLiking, userHasLiked]);
 
   const handleFlag = useCallback(async () => {
-    if (isFlagging || userHasFlagged || typeof window.farcasterkit === 'undefined') return;
+    if (isFlagging || userHasFlagged) return;
     setIsFlagging(true);
 
     try {
-      const response = await window.farcasterkit.quickAuth.fetch(
+      const response = await sdk.quickAuth.fetch(
         `/api/articles/${articleSlug}/flag`,
         {
           method: "POST",
