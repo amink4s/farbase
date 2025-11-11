@@ -1,56 +1,194 @@
-import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import rehypeSanitize from 'rehype-sanitize';
-import Link from 'next/link';
+import Image from 'next/image';
 
-type ArticleItem = {
+type UserData = { username: string; display_name: string; pfp_url: string };
+
+type Article = {
+  id: number;
   slug: string;
   title: string;
-  metadata?: Record<string, unknown>;
-  author_fid?: string;
-  created_at?: string;
+  description: string;
+  category: string;
+  author_fid: number;
+  created_at: string;
+  author_username?: string;
+  author_display_name?: string;
+  author_pfp?: string;
+  like_count?: number;
+  flag_count?: number;
 };
-
-export const metadata = { title: 'Explore — Projects' };
-
-export const dynamic = 'force-dynamic';
 
 export default async function Page() {
   const SUPABASE_URL = process.env.SUPABASE_URL;
-  const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
 
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    return <div style={{ padding: 24 }}>Missing Supabase configuration</div>;
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+  }
+  if (!NEYNAR_API_KEY) {
+    throw new Error('Missing NEYNAR_API_KEY');
   }
 
-  // Filter articles where metadata->>'category' = 'article' (projects/general articles, not tokens)
-  const url = `${SUPABASE_URL}/rest/v1/articles?select=slug,title,metadata,author_fid,created_at&metadata->>category=eq.article&order=created_at.desc&limit=200`;
-  const resp = await fetch(url, { headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY }, next: { revalidate: 60 } });
-  if (!resp.ok) {
-    return <div style={{ padding: 24 }}>Failed to load projects list</div>;
+  let articles: Article[] = [];
+
+  try {
+    const articlesResp = await fetch(
+      `${SUPABASE_URL}/rest/v1/articles?category=eq.project&select=*&order=created_at.desc`,
+      {
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+        },
+        next: { revalidate: 3600 }
+      }
+    );
+    if (articlesResp.ok) {
+      articles = await articlesResp.json();
+
+      // Fetch author info from Neynar
+      if (articles.length > 0) {
+        const fids = [...new Set(articles.map(a => a.author_fid).filter(Boolean))];
+        const neynarResp = await fetch(
+          `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fids.join(',')}`,
+          {
+            headers: {
+              accept: 'application/json',
+              api_key: NEYNAR_API_KEY
+            },
+            next: { revalidate: 3600 }
+          }
+        );
+        if (neynarResp.ok) {
+          const neynarData = await neynarResp.json();
+          const userMap = new Map<string, UserData>(
+            neynarData.users?.map((u: { fid: number; username: string; display_name: string; pfp_url: string }) => 
+              [String(u.fid), { username: u.username, display_name: u.display_name, pfp_url: u.pfp_url } as UserData]
+            ) || []
+          );
+          articles = articles.map(a => {
+            const user: UserData | undefined = userMap.get(String(a.author_fid));
+            return user ? { ...a, author_username: user.username, author_display_name: user.display_name, author_pfp: user.pfp_url } : a;
+          });
+        }
+      }
+
+      // Fetch like/flag counts
+      if (articles.length > 0) {
+        const articleIds = articles.map(a => a.id);
+        const [likesResp, flagsResp] = await Promise.all([
+          fetch(
+            `${SUPABASE_URL}/rest/v1/article_likes?article_id=in.(${articleIds.join(',')})&select=article_id`,
+            {
+              headers: {
+                apikey: SUPABASE_SERVICE_ROLE_KEY,
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+              },
+              next: { revalidate: 60 }
+            }
+          ),
+          fetch(
+            `${SUPABASE_URL}/rest/v1/article_flags?article_id=in.(${articleIds.join(',')})&select=article_id`,
+            {
+              headers: {
+                apikey: SUPABASE_SERVICE_ROLE_KEY,
+                Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
+              },
+              next: { revalidate: 60 }
+            }
+          )
+        ]);
+
+        if (likesResp.ok && flagsResp.ok) {
+          const likes: { article_id: number }[] = await likesResp.json();
+          const flags: { article_id: number }[] = await flagsResp.json();
+          
+          const likeCounts = new Map<number, number>();
+          const flagCounts = new Map<number, number>();
+          
+          likes.forEach(l => likeCounts.set(l.article_id, (likeCounts.get(l.article_id) || 0) + 1));
+          flags.forEach(f => flagCounts.set(f.article_id, (flagCounts.get(f.article_id) || 0) + 1));
+          
+          articles = articles.map(a => ({
+            ...a,
+            like_count: likeCounts.get(a.id) || 0,
+            flag_count: flagCounts.get(a.id) || 0
+          }));
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching projects:', err);
   }
-  const rows = await resp.json();
-  const articles: ArticleItem[] = Array.isArray(rows) ? rows : [rows];
 
   return (
-    <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
-      <Link href="/" style={{ display: 'inline-block', padding: '10px 20px', background: 'var(--foreground)', color: 'var(--background)', textDecoration: 'none', borderRadius: 8, fontSize: 15, fontWeight: 600, marginBottom: 20 }}>← Home</Link>
-      <main style={{ marginTop: 16 }}>
-      <h1 style={{ marginBottom: 8 }}>Projects</h1>
-      {articles.length === 0 ? (
-        <p>No project articles found.</p>
-      ) : (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-          {articles.map((a) => (
-            <article key={a.slug} style={{ flex: '1 1 260px', minWidth: 220, background: 'var(--card-bg, #fff)', padding: 16, borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.1)', border: '1px solid var(--border-color, #e5e7eb)' }}>
-              <a href={`/articles/${encodeURIComponent(a.slug)}`} style={{ fontWeight: 600, display: 'block', fontSize: 16, marginBottom: 8, color: 'var(--foreground)' }}>{a.title}</a>
-              <div style={{ color: 'var(--text-secondary, #666)', fontSize: 13 }}>{a.author_fid} • {a.created_at ? new Date(String(a.created_at)).toLocaleString() : ''}</div>
-              <div style={{ marginTop: 8, color: 'var(--foreground)' }}><ReactMarkdown rehypePlugins={[rehypeSanitize]}>{String((a.metadata as Record<string, unknown> | undefined)?.summary ?? '')}</ReactMarkdown></div>
-            </article>
-          ))}
-        </div>
-      )}
-    </main>
+    <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+      <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>Project Articles</h1>
+      
+      {articles.length === 0 && <p>No project articles found.</p>}
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {articles.map((article: Article) => (
+          <a
+            key={article.id}
+            href={`/article/${article.slug}`}
+            style={{
+              display: 'block',
+              border: '1px solid #ddd',
+              borderRadius: '8px',
+              padding: '16px',
+              textDecoration: 'none',
+              color: 'inherit',
+              transition: 'box-shadow 0.2s',
+              cursor: 'pointer'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'}
+            onMouseOut={(e) => e.currentTarget.style.boxShadow = 'none'}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+              {article.author_pfp && (
+                <Image
+                  src={article.author_pfp}
+                  alt={article.author_username || 'Author'}
+                  width={40}
+                  height={40}
+                  style={{ borderRadius: '50%' }}
+                />
+              )}
+              <div>
+                <div style={{ fontWeight: '600', fontSize: '14px' }}>
+                  {article.author_display_name || article.author_username || 'Unknown'}
+                </div>
+                {article.author_username && (
+                  <div style={{ fontSize: '12px', color: '#666' }}>
+                    @{article.author_username}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>{article.title}</h2>
+            <p style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>{article.description}</p>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px' }}>
+              <span
+                style={{
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}
+              >
+                project
+              </span>
+              
+              <span style={{ color: '#666' }}>
+                {article.like_count || 0}👍 · {article.flag_count || 0}🚩
+              </span>
+            </div>
+          </a>
+        ))}
+      </div>
     </div>
   );
 }
