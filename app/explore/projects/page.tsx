@@ -35,14 +35,18 @@ export default async function Page() {
     const articlesResp = await fetch(
       `${SUPABASE_URL}/rest/v1/articles?category=eq.project&select=*&order=created_at.desc`,
       {
-        headers: {
+        headers: new Headers({
           apikey: SUPABASE_SERVICE_ROLE_KEY,
           Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`
-        },
+        }),
         next: { revalidate: 3600 }
       }
     );
-    if (articlesResp.ok) {
+    if (!articlesResp.ok) {
+      console.error(`Failed to fetch articles: ${articlesResp.status} ${articlesResp.statusText}`);
+      const errorBody = await articlesResp.text();
+      console.error('Error body:', errorBody);
+    } else {
       articles = await articlesResp.json();
 
       // Fetch author info from Neynar
@@ -51,10 +55,10 @@ export default async function Page() {
         const neynarResp = await fetch(
           `https://api.neynar.com/v2/farcaster/user/bulk?fids=${fids.join(',')}`,
           {
-            headers: {
+            headers: new Headers({
               accept: 'application/json',
               api_key: NEYNAR_API_KEY
-            },
+            }),
             next: { revalidate: 3600 }
           }
         );
