@@ -1,5 +1,7 @@
 import Image from 'next/image';
 
+export const dynamic = 'force-dynamic';
+
 type UserData = { username: string; display_name: string; pfp_url: string };
 type NeynarUser = {
   fid: number | string;

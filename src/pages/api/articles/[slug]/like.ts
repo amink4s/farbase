@@ -46,6 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // 2. Fetch liker's Neynar score with caching (Supabase table neynar_profiles)
     let neynarScore = 0;
+    let needFetch = true;
     try {
       const { data: cached } = await supabase
         .from("neynar_profiles")
@@ -56,28 +57,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const isFresh = cached && cached.fetched_at && (Date.now() - new Date(cached.fetched_at as unknown as string).getTime()) < 6 * 60 * 60 * 1000;
       if (cached && isFresh) {
         neynarScore = Number(cached.score) || 0;
+        needFetch = false;
+      }
+    } catch (e) {
+      // Table might not exist yet; we'll fetch live and skip caching
+      console.warn("Neynar cache read failed; falling back to live fetch", e);
+    }
+
+    if (needFetch) {
+      const neynarResp = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${likerFid}`,
+        { headers: { 'accept': 'application/json', 'x-api-key': NEYNAR_API_KEY! } }
+      );
+      if (!neynarResp.ok) {
+        console.warn("Failed to fetch Neynar user data", await neynarResp.text());
       } else {
-        const neynarResp = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${likerFid}`,
-          { headers: { 'accept': 'application/json', 'x-api-key': NEYNAR_API_KEY! } }
-        );
-        if (!neynarResp.ok) throw new Error("Failed to fetch Neynar user data");
         const neynarData = await neynarResp.json();
         const user = neynarData?.users?.[0];
         const explicitScore = user?.score ?? user?.neynar_score ?? user?.quality_score ?? user?.experimental_score ?? null;
         neynarScore = typeof explicitScore === 'number' ? explicitScore : 0;
-        // Upsert cache
-        await supabase.from("neynar_profiles").upsert({
-          fid: likerFid,
-          username: user?.username ?? null,
-          display_name: user?.display_name ?? null,
-          pfp_url: user?.pfp_url ?? null,
-          score: neynarScore,
-          fetched_at: new Date().toISOString(),
-        }, { onConflict: 'fid' });
+        // Best-effort cache upsert
+        try {
+          await supabase.from("neynar_profiles").upsert({
+            fid: likerFid,
+            username: user?.username ?? null,
+            display_name: user?.display_name ?? null,
+            pfp_url: user?.pfp_url ?? null,
+            score: neynarScore,
+            fetched_at: new Date().toISOString(),
+          }, { onConflict: 'fid' });
+        } catch (cacheErr) {
+          console.warn("Neynar cache upsert failed (non-fatal)", cacheErr);
+        }
       }
-    } catch (e) {
-      console.warn("Neynar cache fetch failed; defaulting score=0", e);
-      neynarScore = 0;
     }
 
     // 3. Check if score is sufficient
