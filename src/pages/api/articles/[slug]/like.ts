@@ -5,6 +5,7 @@ import { createClient as createQuickAuthClient, Errors } from "@farcaster/quick-
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const NEYNAR_API_KEY = process.env.NEYNAR_API_KEY;
+const MIN_LIKER_SCORE = parseFloat(process.env.MIN_LIKER_SCORE || "0.5");
 
 if (!SUPABASE_URL || !SUPABASE_KEY || !NEYNAR_API_KEY) {
   throw new Error("Missing required environment variables.");
@@ -23,15 +24,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(400).json({ error: "Invalid slug" });
   }
 
-  const host = req.headers.host;
+  const host = req.headers.host || process.env.VERCEL_URL || undefined;
   if (!host) {
-    return res.status(400).json({ error: "Missing host header" });
+    return res.status(400).json({ error: "Missing host/VERCEL_URL" });
   }
 
   try {
     // 1. Verify QuickAuth JWT
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Missing authorization header" });
+    }
     const payload = await quickAuthClient.verifyJwt({
-      token: req.headers.authorization!.split(" ")[1],
+      token: authHeader.split(" ")[1],
       domain: host,
     });
     const likerFid = String(payload.sub);
@@ -39,17 +44,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: "Could not determine user FID from token" });
     }
 
-    // 2. Fetch liker's Neynar score
-    const neynarResp = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${likerFid}`, {
-      headers: { 'api_key': NEYNAR_API_KEY! },
-    });
-    if (!neynarResp.ok) throw new Error("Failed to fetch Neynar user data");
-    const neynarData = await neynarResp.json();
-    // This is a placeholder score logic
-    const neynarScore = neynarData?.users?.[0]?.follower_count > 10 ? 0.6 : 0.4;
+    // 2. Fetch liker's Neynar score with caching (Supabase table neynar_profiles)
+    let neynarScore = 0;
+    try {
+      const { data: cached } = await supabase
+        .from("neynar_profiles")
+        .select("score, fetched_at")
+        .eq("fid", likerFid)
+        .maybeSingle();
+
+      const isFresh = cached && cached.fetched_at && (Date.now() - new Date(cached.fetched_at as unknown as string).getTime()) < 6 * 60 * 60 * 1000;
+      if (cached && isFresh) {
+        neynarScore = Number(cached.score) || 0;
+      } else {
+        const neynarResp = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${likerFid}`,
+          { headers: { 'accept': 'application/json', 'x-api-key': NEYNAR_API_KEY! } }
+        );
+        if (!neynarResp.ok) throw new Error("Failed to fetch Neynar user data");
+        const neynarData = await neynarResp.json();
+        const user = neynarData?.users?.[0];
+        const explicitScore = user?.score ?? user?.neynar_score ?? user?.quality_score ?? user?.experimental_score ?? null;
+        neynarScore = typeof explicitScore === 'number' ? explicitScore : 0;
+        // Upsert cache
+        await supabase.from("neynar_profiles").upsert({
+          fid: likerFid,
+          username: user?.username ?? null,
+          display_name: user?.display_name ?? null,
+          pfp_url: user?.pfp_url ?? null,
+          score: neynarScore,
+          fetched_at: new Date().toISOString(),
+        }, { onConflict: 'fid' });
+      }
+    } catch (e) {
+      console.warn("Neynar cache fetch failed; defaulting score=0", e);
+      neynarScore = 0;
+    }
 
     // 3. Check if score is sufficient
-    if (neynarScore <= 0.5) {
+    if (neynarScore < MIN_LIKER_SCORE) {
       return res.status(403).json({ error: "Neynar score too low to perform this action" });
     }
 
