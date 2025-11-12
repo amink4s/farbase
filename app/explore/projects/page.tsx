@@ -1,6 +1,13 @@
 import Image from 'next/image';
 
 type UserData = { username: string; display_name: string; pfp_url: string };
+type NeynarUser = {
+  fid: number | string;
+  username: string;
+  display_name?: string;
+  pfp_url?: string;
+  pfp?: { url?: string };
+};
 type Article = {
   slug: string;
   title: string;
@@ -68,9 +75,16 @@ export default async function Page() {
       ]);
 
       if (neynarResp.ok) {
-        const neynarData = await neynarResp.json();
+        const neynarData: { users?: NeynarUser[] } = await neynarResp.json();
         const userMap = new Map<string, UserData>(
-          (neynarData.users as any[] | undefined)?.map((u: any) => [String(u.fid), { username: u.username, display_name: u.display_name, pfp_url: u.pfp_url }]) || []
+          (neynarData.users ?? []).map((u) => [
+            String(u.fid),
+            {
+              username: u.username,
+              display_name: u.display_name ?? u.username,
+              pfp_url: u.pfp_url ?? u.pfp?.url ?? '',
+            },
+          ])
         );
         articles = articles.map(a => {
           const u = userMap.get(String(a.author_fid));

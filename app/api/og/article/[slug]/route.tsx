@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from "@vercel/og";
 import { NextRequest } from "next/server";
 
@@ -46,7 +47,8 @@ export async function GET(req: NextRequest) {
     // 2. Fetch author data from Neynar
     const neynarResponse = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${author_fid}`, {
       headers: {
-        api_key: neynarApiKey,
+        accept: "application/json",
+        "x-api-key": neynarApiKey,
       } as HeadersInit,
     });
 

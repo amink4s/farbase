@@ -81,7 +81,6 @@ export default function MePage() {
               <li key={String(c.id ?? Math.random())} style={{ marginBottom: 12 }}>
                 <div style={{ fontWeight: 600 }}>
                   {c['source_url'] ? (
-                    // eslint-disable-next-line @next/next/no-html-link-for-pages
                     <a href={String(c['source_url'])} style={{ color: '#0366d6', textDecoration: 'none' }}>
                       {String(c.reason ?? c.source_type ?? 'contribution')}
                     </a>
