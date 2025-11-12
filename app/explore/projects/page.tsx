@@ -56,8 +56,24 @@ export default async function Page() {
       );
     }
 
-    const rows: Article[] = await articlesResp.json();
-    articles = rows;
+    let rows: Article[] = await articlesResp.json();
+    // Fallback: if no explicit project-tagged rows, show recent published articles
+    if (!Array.isArray(rows) || rows.length === 0) {
+      const fallbackResp = await fetch(
+        `${SUPABASE_URL}/rest/v1/articles?select=slug,title,metadata,created_at,author_fid&published=eq.true&order=created_at.desc&limit=20`,
+        {
+          headers: {
+            apikey: SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+          next: { revalidate: 60 },
+        }
+      );
+      if (fallbackResp.ok) {
+        rows = await fallbackResp.json();
+      }
+    }
+    articles = rows || [];
 
     if (articles.length > 0) {
       const fids = Array.from(new Set(articles.map(a => a.author_fid).filter(Boolean)));
@@ -159,7 +175,7 @@ export default async function Page() {
                   fontSize: '12px'
                 }}
               >
-                project
+                {article.metadata?.category ?? 'article'}
               </span>
               <span style={{ color: '#666' }}>
                 {(counts[article.slug]?.likes || 0)}👍 · {(counts[article.slug]?.flags || 0)}🚩

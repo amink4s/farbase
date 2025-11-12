@@ -35,15 +35,15 @@ export default async function Page() {
 
   try {
     const articlesResp = await fetch(
-        `${SUPABASE_URL}/rest/v1/articles?select=slug,title,metadata,created_at,author_fid&published=eq.true&metadata->>category=eq.token&order=created_at.desc`,
-        {
-          headers: {
-            apikey: SUPABASE_SERVICE_ROLE_KEY,
-            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          },
-          next: { revalidate: 120 },
-        }
-      );
+      `${SUPABASE_URL}/rest/v1/articles?select=slug,title,metadata,created_at,author_fid&published=eq.true&metadata->>category=eq.token&order=created_at.desc`,
+      {
+        headers: {
+          apikey: SUPABASE_SERVICE_ROLE_KEY,
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        next: { revalidate: 120 },
+      }
+    );
 
     if (!articlesResp.ok) {
       const text = await articlesResp.text();
@@ -56,8 +56,24 @@ export default async function Page() {
         );
     }
 
-    const rows: Article[] = await articlesResp.json();
-    articles = rows;
+    let rows: Article[] = await articlesResp.json();
+    // Fallback: if no explicit token-tagged rows, show recent published articles
+    if (!Array.isArray(rows) || rows.length === 0) {
+      const fallbackResp = await fetch(
+        `${SUPABASE_URL}/rest/v1/articles?select=slug,title,metadata,created_at,author_fid&published=eq.true&order=created_at.desc&limit=20`,
+        {
+          headers: {
+            apikey: SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+          next: { revalidate: 60 },
+        }
+      );
+      if (fallbackResp.ok) {
+        rows = await fallbackResp.json();
+      }
+    }
+    articles = rows || [];
 
     if (articles.length > 0) {
       const fids = Array.from(new Set(articles.map(a => a.author_fid).filter(Boolean)));
@@ -152,14 +168,14 @@ export default async function Page() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px' }}>
               <span
                 style={{
-                    backgroundColor: '#9333ea',
-                    color: 'white',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '12px'
-                  }}
+                  backgroundColor: '#9333ea',
+                  color: 'white',
+                  padding: '4px 8px',
+                  borderRadius: '4px',
+                  fontSize: '12px'
+                }}
               >
-                token
+                {article.metadata?.category ?? 'article'}
               </span>
               <span style={{ color: '#666' }}>
                 {(counts[article.slug]?.likes || 0)}👍 · {(counts[article.slug]?.flags || 0)}🚩

@@ -19,9 +19,13 @@ export async function GET() {
   const tables = [
     "accounts",
     "articles",
-    "contributions",
+    "likes",
+    "flags",
     "user_points",
+    "point_logs",
+    "neynar_profiles",
     "article_edits",
+    "contributions",
   ];
 
   for (const table of tables) {
