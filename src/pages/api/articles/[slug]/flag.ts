@@ -59,21 +59,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Article not found" });
     }
 
-    // 3. Insert the flag
+    // 3. Insert the flag (idempotent)
     const { error: flagError } = await supabase
       .from("flags")
       .insert({ article_id: article.id, user_fid: flaggerFid });
 
-    // If it's a duplicate flag (code 23505), treat as success (idempotent)
-    if (flagError) {
-      if (flagError.code === "23505") {
-        return res.status(200).json({ success: true, message: "Already flagged" });
-      }
-      console.error("Error inserting flag:", flagError);
-      return res.status(500).json({ error: "Failed to record flag", details: flagError.message });
+    const isNewFlag = !flagError;
+    if (flagError && flagError.code !== '23505') {
+      console.error('Error inserting flag:', flagError);
+      return res.status(500).json({ error: 'Failed to record flag', details: flagError.message });
     }
 
-    return res.status(200).json({ success: true, message: "Article flagged" });
+    if (isNewFlag) {
+      // Increment stored flag_count atomically
+      try {
+        await supabase.rpc('increment_article_flag_count', { p_article_id: article.id });
+      } catch (incErr) {
+        console.warn('Failed to increment flag_count', incErr);
+      }
+      // Log point event (no points awarded for flag, but tracked for audit)
+      try {
+        await supabase.from('point_logs').insert({
+          user_fid: flaggerFid,
+          points_awarded: 0,
+          reason: 'article_flagged',
+          related_article_id: article.id,
+          related_user_fid: flaggerFid,
+        });
+      } catch (logErr) {
+        console.warn('Flag log failed (non-fatal)', logErr);
+      }
+    }
+
+    return res.status(200).json({ success: true, message: isNewFlag ? 'Article flagged' : 'Already flagged' });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     if (err instanceof Errors.InvalidTokenError) {

@@ -107,18 +107,39 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Article not found" });
     }
 
-    // 5. Use RPC function for idempotent like + points + count update
-    const rpcResp = await supabase.rpc("like_article", {
-      p_slug: slug,
-      p_liker_fid: likerFid,
-      p_points_author: 1,
-    });
-    if (rpcResp.error) {
-      console.error("like_article RPC error:", rpcResp.error);
-      return res.status(500).json({ error: "Failed to process like" });
+    // 5. Insert like row (idempotent)
+    const { error: likeError } = await supabase
+      .from("likes")
+      .insert({ article_id: article.id, user_fid: likerFid });
+    if (likeError && likeError.code !== '23505') {
+      console.error('Error inserting like:', likeError);
+      return res.status(500).json({ error: 'Failed to record like' });
+    }
+    const isNewLike = !likeError;
+
+    if (isNewLike) {
+      // Increment stored like_count atomically
+      try {
+        await supabase.rpc('increment_article_like_count', { p_article_id: article.id });
+      } catch (incErr) {
+        console.warn('Failed to increment like_count', incErr);
+      }
+      // Award author points (1) and log
+      try {
+        await supabase.rpc('increment_user_points', { user_fid_to_update: article.author_fid, points_to_add: 1 });
+        await supabase.from('point_logs').insert({
+          user_fid: article.author_fid,
+          points_awarded: 1,
+          reason: 'like_received',
+          related_article_id: article.id,
+          related_user_fid: likerFid,
+        });
+      } catch (pointsErr) {
+        console.warn('Point awarding failed (non-fatal)', pointsErr);
+      }
     }
 
-    res.status(200).json({ success: true, message: "Article liked", data: rpcResp.data });
+    res.status(200).json({ success: true, message: 'Article liked', newLike: isNewLike });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     if (err instanceof Errors.InvalidTokenError) {

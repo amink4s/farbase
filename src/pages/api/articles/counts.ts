@@ -20,16 +20,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   try {
     // Attempt to use stored counts columns first
-    const url = `${SUPABASE_URL}/rest/v1/articles?select=slug,likes_count,flags_count&slug=in.(${slugs.map(s => encodeURIComponent(s)).join(',')})`;
+    const url = `${SUPABASE_URL}/rest/v1/articles?select=slug,like_count,flag_count&slug=in.(${slugs.map(s => encodeURIComponent(s)).join(',')})`;
     const resp = await fetch(url, { headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY } });
     if (!resp.ok) {
       const text = await resp.text();
       return res.status(502).json({ error: "Supabase REST error (articles)", details: text });
     }
-    const rows: { slug: string; likes_count?: number; flags_count?: number }[] = await resp.json();
+    const rows: { slug: string; like_count?: number; flag_count?: number }[] = await resp.json();
     const counts: CountsResponse["counts"] = Object.fromEntries(slugs.map(s => [s, { likes: 0, flags: 0 }]));
     for (const r of rows) {
-      counts[r.slug] = { likes: r.likes_count || 0, flags: r.flags_count || 0 };
+      counts[r.slug] = { likes: r.like_count || 0, flags: r.flag_count || 0 };
     }
     return res.status(200).json({ counts });
   } catch (e) {
