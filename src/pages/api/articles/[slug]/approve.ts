@@ -40,7 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Fetch admin Neynar score for gating
     let adminScore = 0;
     const neynarResp = await fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${adminFid}`,
-      { headers: { accept: 'application/json', 'x-api-key': NEYNAR_API_KEY } }
+      { headers: { accept: 'application/json', 'x-api-key': NEYNAR_API_KEY as string } as HeadersInit }
     );
     if (neynarResp.ok) {
       const data = await neynarResp.json();
