@@ -50,17 +50,9 @@ export default async function ArticleViewPage(props: any) {
     );
   }
 
-  // Fetch counts for likes and flags
-  const [{ count: likeCount }, { count: flagCount }] = await Promise.all([
-    createSupabaseClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
-      .from("likes")
-      .select("*", { count: "exact", head: true })
-      .eq("article_id", article.id),
-    createSupabaseClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY!)
-      .from("flags")
-      .select("*", { count: "exact", head: true })
-      .eq("article_id", article.id),
-  ]);
+  // Use stored counts on the article row for consistency across views
+  const likeCount: number = (article as { like_count?: number }).like_count ?? 0;
+  const flagCount: number = (article as { flag_count?: number }).flag_count ?? 0;
 
   // Check if user has liked or flagged
   let hasLiked = false;

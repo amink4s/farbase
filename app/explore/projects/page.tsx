@@ -81,7 +81,7 @@ export default async function Page() {
 
       const [neynarResp, countsResp] = await Promise.all([
         fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${fids.join(',')}`,
-          { headers: { accept: 'application/json', 'x-api-key': NEYNAR_API_KEY }, next: { revalidate: 600 } }
+          { headers: { accept: 'application/json', 'api_key': NEYNAR_API_KEY }, next: { revalidate: 600 } }
         ),
         fetch(`/api/articles/counts`, {
           method: 'POST',
