@@ -31,7 +31,7 @@ export default async function Page() {
   }
 
   let articles: Article[] = [];
-  let counts: Record<string, { likes: number; flags: number }> = {};
+  const counts: Record<string, { likes: number; flags: number }> = {};
 
   try {
     const articlesResp = await fetch(
@@ -79,16 +79,45 @@ export default async function Page() {
       const fids = Array.from(new Set(articles.map(a => a.author_fid).filter(Boolean)));
       const slugs = articles.map(a => a.slug);
 
-      const [neynarResp, countsResp] = await Promise.all([
+      // Fetch article IDs for counts
+      const articlesIdResp = await fetch(
+        `${SUPABASE_URL}/rest/v1/articles?select=id,slug&slug=in.(${slugs.map(s => encodeURIComponent(s)).join(',')})`,
+        {
+          headers: {
+            apikey: SUPABASE_SERVICE_ROLE_KEY,
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+          },
+          next: { revalidate: 120 },
+        }
+      );
+      const articlesWithIds: { id: number; slug: string }[] = articlesIdResp.ok ? await articlesIdResp.json() : [];
+      const slugToId = new Map(articlesWithIds.map(a => [a.slug, a.id]));
+      const articleIds = articlesWithIds.map(a => a.id);
+
+      const [neynarResp, likesResp, flagsResp] = await Promise.all([
         fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${fids.join(',')}`,
           { headers: { accept: 'application/json', 'api_key': NEYNAR_API_KEY }, next: { revalidate: 600 } }
         ),
-        fetch(`/api/articles/counts`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ slugs }),
-          cache: 'no-store',
-        }),
+        articleIds.length > 0 ? fetch(
+          `${SUPABASE_URL}/rest/v1/likes?select=article_id&article_id=in.(${articleIds.join(',')})`,
+          {
+            headers: {
+              apikey: SUPABASE_SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            },
+            next: { revalidate: 60 },
+          }
+        ) : Promise.resolve(null),
+        articleIds.length > 0 ? fetch(
+          `${SUPABASE_URL}/rest/v1/flags?select=article_id&article_id=in.(${articleIds.join(',')})`,
+          {
+            headers: {
+              apikey: SUPABASE_SERVICE_ROLE_KEY,
+              Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            },
+            next: { revalidate: 60 },
+          }
+        ) : Promise.resolve(null),
       ]);
 
       if (neynarResp.ok) {
@@ -109,9 +138,27 @@ export default async function Page() {
         });
       }
 
-      if (countsResp.ok) {
-        const json = await countsResp.json();
-        counts = json.counts || {};
+      // Count likes and flags per article
+      const likeCounts = new Map<number, number>();
+      const flagCounts = new Map<number, number>();
+      if (likesResp?.ok) {
+        const likes: { article_id: number }[] = await likesResp.json();
+        for (const l of likes) {
+          likeCounts.set(l.article_id, (likeCounts.get(l.article_id) || 0) + 1);
+        }
+      }
+      if (flagsResp?.ok) {
+        const flags: { article_id: number }[] = await flagsResp.json();
+        for (const f of flags) {
+          flagCounts.set(f.article_id, (flagCounts.get(f.article_id) || 0) + 1);
+        }
+      }
+      for (const slug of slugs) {
+        const articleId = slugToId.get(slug);
+        counts[slug] = {
+          likes: articleId ? (likeCounts.get(articleId) || 0) : 0,
+          flags: articleId ? (flagCounts.get(articleId) || 0) : 0,
+        };
       }
     }
   } catch (err) {
