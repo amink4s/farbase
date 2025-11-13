@@ -107,45 +107,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: "Article not found" });
     }
 
-    // 5. Insert the like
-    const { error: likeError } = await supabase
-      .from("likes")
-      .insert({ article_id: article.id, user_fid: likerFid });
-
-    // If it's a duplicate like, the unique constraint will cause an error.
-    // We can treat this as a success for the user (idempotent).
-    if (likeError && likeError.code !== "23505") {
-      console.error("Error inserting like:", likeError);
-      throw likeError;
+    // 5. Use RPC function for idempotent like + points + count update
+    const rpcResp = await supabase.rpc("like_article", {
+      p_slug: slug,
+      p_liker_fid: likerFid,
+      p_points_author: 1,
+    });
+    if (rpcResp.error) {
+      console.error("like_article RPC error:", rpcResp.error);
+      return res.status(500).json({ error: "Failed to process like" });
     }
 
-    // Only award points if the like was new (no error)
-    if (!likeError) {
-      // 6. Award 1 point to the author
-      const { error: pointsError } = await supabase
-        .rpc("increment_user_points", { user_fid_to_update: article.author_fid, points_to_add: 1 });
-
-      if (pointsError) {
-        console.error(`Failed to award points: ${pointsError.message}`);
-        // Non-critical, so we don't throw, but we log it.
-      }
-
-      // 7. Log the point transaction
-      const { error: logError } = await supabase.from("point_logs").insert({
-        user_fid: article.author_fid,
-        points_awarded: 1,
-        reason: "like_received",
-        related_article_id: article.id,
-        related_user_fid: likerFid,
-      });
-
-      if (logError) {
-        console.error(`Failed to log points: ${logError.message}`);
-        // Also non-critical.
-      }
-    }
-
-    res.status(200).json({ success: true, message: "Article liked" });
+    res.status(200).json({ success: true, message: "Article liked", data: rpcResp.data });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     if (err instanceof Errors.InvalidTokenError) {
