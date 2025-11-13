@@ -19,17 +19,52 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 
   try {
-    // Attempt to use stored counts columns first
-    const url = `${SUPABASE_URL}/rest/v1/articles?select=slug,like_count,flag_count&slug=in.(${slugs.map(s => encodeURIComponent(s)).join(',')})`;
-    const resp = await fetch(url, { headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY } });
-    if (!resp.ok) {
-      const text = await resp.text();
+    // Fetch article IDs for the given slugs
+    const articlesUrl = `${SUPABASE_URL}/rest/v1/articles?select=id,slug&slug=in.(${slugs.map(s => encodeURIComponent(s)).join(',')})`;
+    const articlesResp = await fetch(articlesUrl, { headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY } });
+    if (!articlesResp.ok) {
+      const text = await articlesResp.text();
       return res.status(502).json({ error: "Supabase REST error (articles)", details: text });
     }
-    const rows: { slug: string; like_count?: number; flag_count?: number }[] = await resp.json();
-    const counts: CountsResponse["counts"] = Object.fromEntries(slugs.map(s => [s, { likes: 0, flags: 0 }]));
-    for (const r of rows) {
-      counts[r.slug] = { likes: r.like_count || 0, flags: r.flag_count || 0 };
+    const articles: { id: number; slug: string }[] = await articlesResp.json();
+    const articleIds = articles.map(a => a.id);
+    const slugToId = new Map(articles.map(a => [a.slug, a.id]));
+
+    // Fetch likes and flags counts grouped by article_id
+    const [likesResp, flagsResp] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/likes?select=article_id&article_id=in.(${articleIds.join(',')})`, {
+        headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY }
+      }),
+      fetch(`${SUPABASE_URL}/rest/v1/flags?select=article_id&article_id=in.(${articleIds.join(',')})`, {
+        headers: { Authorization: `Bearer ${SUPABASE_KEY}`, apikey: SUPABASE_KEY }
+      })
+    ]);
+
+    if (!likesResp.ok || !flagsResp.ok) {
+      return res.status(502).json({ error: "Supabase REST error (likes/flags)" });
+    }
+
+    const likes: { article_id: number }[] = await likesResp.json();
+    const flags: { article_id: number }[] = await flagsResp.json();
+
+    // Count likes and flags per article_id
+    const likeCounts = new Map<number, number>();
+    const flagCounts = new Map<number, number>();
+    for (const l of likes) {
+      likeCounts.set(l.article_id, (likeCounts.get(l.article_id) || 0) + 1);
+    }
+    for (const f of flags) {
+      flagCounts.set(f.article_id, (flagCounts.get(f.article_id) || 0) + 1);
+    }
+
+    // Build response mapping slug to counts
+    const counts: CountsResponse["counts"] = {};
+    for (const slug of slugs) {
+      const articleId = slugToId.get(slug);
+      counts[slug] = {
+        likes: articleId ? (likeCounts.get(articleId) || 0) : 0,
+        flags: articleId ? (flagCounts.get(articleId) || 0) : 0,
+      };
     }
     return res.status(200).json({ counts });
   } catch (e) {
