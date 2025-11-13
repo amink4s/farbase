@@ -30,10 +30,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const token = authHeader.split(" ")[1];
-    
-    // Use farbase-phi.vercel.app as the domain
-    const domain = process.env.VERCEL_URL || "farbase-phi.vercel.app";
-    
+
+    // Determine domain from request host or Vercel env
+    const domain = req.headers.host || process.env.VERCEL_URL || undefined;
+    if (!domain) {
+      return res.status(400).json({ error: "Missing host/VERCEL_URL" });
+    }
+
     const payload = await quickAuthClient.verifyJwt({
       token,
       domain,

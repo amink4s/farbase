@@ -79,12 +79,11 @@ export default async function Page() {
       const fids = Array.from(new Set(articles.map(a => a.author_fid).filter(Boolean)));
       const slugs = articles.map(a => a.slug);
 
-      const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
       const [neynarResp, countsResp] = await Promise.all([
         fetch(`https://api.neynar.com/v2/farcaster/user/bulk?fids=${fids.join(',')}`,
           { headers: { accept: 'application/json', 'x-api-key': NEYNAR_API_KEY }, next: { revalidate: 600 } }
         ),
-        fetch(`${baseUrl}/api/articles/counts`, {
+        fetch(`/api/articles/counts`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ slugs }),
@@ -129,6 +128,7 @@ export default async function Page() {
           <a
             key={article.slug}
             href={`/articles/${article.slug}`}
+            className="article-card"
             style={{
               display: 'block',
               border: '1px solid #ddd',
@@ -139,8 +139,6 @@ export default async function Page() {
               transition: 'box-shadow 0.2s',
               cursor: 'pointer'
             }}
-            onMouseOver={(e) => e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)'}
-            onMouseOut={(e) => e.currentTarget.style.boxShadow = 'none'}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
               {article.author_pfp && (
