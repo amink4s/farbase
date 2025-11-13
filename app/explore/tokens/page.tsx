@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import ArticleListCard from '../../../components/ArticleListCard';
 
 export const dynamic = 'force-dynamic';
 
@@ -123,63 +123,17 @@ export default async function Page() {
         <h1 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>Token Articles</h1>
       {articles.length === 0 && <p>No token articles found.</p>}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxWidth: 760 }}>
         {articles.map((article) => (
-            <a
+          <ArticleListCard
             key={article.slug}
-              href={`/articles/${article.slug}`}
-            className="article-card"
-            style={{
-                display: 'block',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                padding: '16px',
-                textDecoration: 'none',
-                color: 'inherit',
-                transition: 'box-shadow 0.2s',
-                cursor: 'pointer'
-              }}
-            >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                {article.author_pfp && (
-                <Image
-                    src={article.author_pfp}
-                    alt={article.author_username || 'Author'}
-                    width={40}
-                    height={40}
-                    style={{ borderRadius: '50%' }}
-                  />
-                )}
-                <div>
-                  <div style={{ fontWeight: '600', fontSize: '14px' }}>
-                  {article.author_display_name || article.author_username || `FID ${article.author_fid}`}
-                  </div>
-                  {article.author_username && (
-                  <div style={{ fontSize: '12px', color: '#666' }}>
-                    @{article.author_username}
-                  </div>
-                  )}
-                </div>
-            </div>
-
-            <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>{article.title}</h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '14px' }}>
-              <span
-                style={{
-                  backgroundColor: '#9333ea',
-                  color: 'white',
-                  padding: '4px 8px',
-                  borderRadius: '4px',
-                  fontSize: '12px'
-                }}
-              >
-                {article.metadata?.category ?? 'article'}
-              </span>
-              <span style={{ color: '#666' }}>
-                {(counts[article.slug]?.likes || 0)}👍 · {(counts[article.slug]?.flags || 0)}🚩
-              </span>
-            </div>
-          </a>
+            href={`/articles/${article.slug}`}
+            title={article.title}
+            authorDisplay={String(article.author_display_name || article.author_username || `FID ${article.author_fid}`)}
+            authorPfp={article.author_pfp}
+            createdAt={article.created_at}
+            rightText={`${counts[article.slug]?.likes || 0}👍 · ${counts[article.slug]?.flags || 0}🚩`}
+          />
         ))}
       </div>
     </div>

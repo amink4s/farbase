@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import ArticleListCard from "../components/ArticleListCard";
 import { useMiniKit, useQuickAuth } from "@coinbase/onchainkit/minikit";
 import styles from "./page.module.css";
 import { ArticleSearch } from '../components/ArticleSearch';
@@ -179,69 +180,16 @@ export default function Home() {
               <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>⭐ Featured</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {featuredArticles.map((article) => (
-                  <Link 
-                    key={article.slug} 
+                  <ArticleListCard
+                    key={article.slug}
                     href={`/articles/${article.slug}`}
-                    style={{
-                      padding: '12px 16px',
-                      background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 193, 7, 0.05))',
-                      border: '2px solid rgba(255, 215, 0, 0.3)',
-                      borderRadius: 8,
-                      textDecoration: 'none',
-                      color: 'var(--foreground)',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: 12,
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.6)';
-                      e.currentTarget.style.transform = 'translateX(4px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(255, 215, 0, 0.3)';
-                      e.currentTarget.style.transform = 'translateX(0)';
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-                      {article.author_pfp && (
-                        <Image
-                          src={article.author_pfp}
-                          alt={article.author_display_name || 'Author'}
-                          width={32}
-                          height={32}
-                          style={{ borderRadius: '50%', flexShrink: 0 }}
-                        />
-                      )}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {article.title}
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #666)' }}>
-                          by {article.author_display_name || article.author_username || `FID ${article.author_fid}`} • {new Date(article.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                      {article.metadata?.category && (
-                        <span style={{
-                          padding: '4px 8px',
-                          background: article.metadata.category === 'token' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                          color: article.metadata.category === 'token' ? 'rgb(139, 92, 246)' : 'rgb(59, 130, 246)',
-                          borderRadius: 4,
-                          fontSize: 11,
-                          fontWeight: 600,
-                          flexShrink: 0
-                        }}>
-                          {article.metadata.category === 'token' ? 'Token' : 'Project'}
-                        </span>
-                      )}
-                      <span style={{ fontSize: 11, color: 'var(--text-secondary, #555)', fontWeight: 500 }}>
-                        {formatCounts(article.slug)}
-                      </span>
-                    </div>
-                  </Link>
+                    title={article.title}
+                    authorDisplay={String(article.author_display_name || article.author_username || `FID ${article.author_fid}`)}
+                    authorPfp={article.author_pfp}
+                    createdAt={article.created_at}
+                    rightText={formatCounts(article.slug)}
+                    variant="featured"
+                  />
                 ))}
               </div>
             </div>
@@ -252,69 +200,15 @@ export default function Home() {
               <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Recent Articles</h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {recentArticles.map((article) => (
-                  <Link 
-                    key={article.slug} 
+                  <ArticleListCard
+                    key={article.slug}
                     href={`/articles/${article.slug}`}
-                    style={{
-                      padding: '12px 16px',
-                      background: 'var(--card-bg, #fff)',
-                      border: '1px solid var(--border-color, #e5e7eb)',
-                      borderRadius: 8,
-                      textDecoration: 'none',
-                      color: 'var(--foreground)',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: 12,
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--foreground)';
-                      e.currentTarget.style.transform = 'translateX(4px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'var(--border-color, #e5e7eb)';
-                      e.currentTarget.style.transform = 'translateX(0)';
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
-                      {article.author_pfp && (
-                        <Image
-                          src={article.author_pfp}
-                          alt={article.author_display_name || 'Author'}
-                          width={32}
-                          height={32}
-                          style={{ borderRadius: '50%', flexShrink: 0 }}
-                        />
-                      )}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {article.title}
-                        </div>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary, #666)' }}>
-                          by {article.author_display_name || article.author_username || `FID ${article.author_fid}`} • {new Date(article.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-                      {article.metadata?.category && (
-                        <span style={{
-                          padding: '4px 8px',
-                          background: article.metadata.category === 'token' ? 'rgba(139, 92, 246, 0.1)' : 'rgba(59, 130, 246, 0.1)',
-                          color: article.metadata.category === 'token' ? 'rgb(139, 92, 246)' : 'rgb(59, 130, 246)',
-                          borderRadius: 4,
-                          fontSize: 11,
-                          fontWeight: 600,
-                          flexShrink: 0
-                        }}>
-                          {article.metadata.category === 'token' ? 'Token' : 'Project'}
-                        </span>
-                      )}
-                      <span style={{ fontSize: 11, color: 'var(--text-secondary, #555)', fontWeight: 500 }}>
-                        {formatCounts(article.slug)}
-                      </span>
-                    </div>
-                  </Link>
+                    title={article.title}
+                    authorDisplay={String(article.author_display_name || article.author_username || `FID ${article.author_fid}`)}
+                    authorPfp={article.author_pfp}
+                    createdAt={article.created_at}
+                    rightText={formatCounts(article.slug)}
+                  />
                 ))}
               </div>
             </div>

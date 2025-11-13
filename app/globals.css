@@ -66,6 +66,37 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   }
 
+  .explore-card:hover {
+    border-color: var(--foreground);
+    transform: translateX(4px);
+  }
+
+  /* Reusable article card (shared by home + explore) */
+  .article-list-card {
+    padding: 12px 16px;
+    background: var(--card-bg, #fff);
+    border: 1px solid var(--border-color, #e5e7eb);
+    border-radius: 8px;
+    color: var(--foreground);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    transition: border-color 0.15s, transform 0.15s;
+    text-decoration: none;
+  }
+  .article-list-card:hover {
+    border-color: var(--foreground);
+    transform: translateX(4px);
+  }
+  .article-list-card--featured {
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 193, 7, 0.05));
+    border: 2px solid rgba(255, 215, 0, 0.3);
+  }
+  .article-list-card--featured:hover {
+    border-color: rgba(255, 215, 0, 0.6);
+  }
+
   @media (prefers-color-scheme: dark) {
     html {
       color-scheme: dark;
