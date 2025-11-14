@@ -4,6 +4,7 @@ import { Errors, createClient } from "@farcaster/quick-auth";
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const NEYNAR_KEY = process.env.NEYNAR_API_KEY;
+const MIN_AUTHOR_SCORE = parseFloat(process.env.MIN_AUTHOR_SCORE ?? "0.9");
 // Neynar v2: user quality scores are returned in user object from bulk user fetch
 const NEYNAR_URL = process.env.NEYNAR_API_URL || "https://api.neynar.com/v2/farcaster/user/bulk";
 /**
@@ -208,7 +209,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Enforce quality gate: require Neynar score > 0.9 (strict threshold)
-    if (neynar_score < 0.9) {
+    if (neynar_score < MIN_AUTHOR_SCORE) {
       return res.status(403).json({ error: "Neynar score too low", neynar_score });
     }
 
